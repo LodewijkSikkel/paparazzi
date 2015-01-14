@@ -347,7 +347,7 @@ static inline void actuators_esc32_grant_idx(uint8_t *data)
     actuators_esc32.escs[i].can_id = data[5];
 
     data[4] = (i / 4) + 1; //GroupId
-    data[5] = (i % 4) + 1; //SubGroupId
+    data[5] = 0;//(i % 4) + 1; //SubGroupId
     actuators_esc32_send(ESC32_CAN_LCC_HIGH | ESC32_CAN_TT_NODE | ESC32_CAN_FID_GRANT_ADDR, i + 1, 6,
                          data);
   }

@@ -251,6 +251,30 @@ test_esc_asctecv1_simple.srcs   += mcu_periph/i2c.c $(SRC_ARCH)/mcu_periph/i2c_a
 test_esc_asctecv1_simple.CFLAGS += -DUSE_I2C1
 
 
+##
+## simple test of the esc32 motor controllers via CAN
+##
+test_esc32.ARCHDIR = $(ARCH)
+test_esc32.CFLAGS += $(COMMON_TEST_CFLAGS)
+test_esc32.srcs   += $(COMMON_TEST_SRCS)
+test_esc32.CFLAGS += $(COMMON_TELEMETRY_CFLAGS)
+test_esc32.CFLAGS += -DUSE_CAN_EXT_ID
+test_esc32.srcs   += $(COMMON_TELEMETRY_SRCS)
+test_esc32.srcs   += test/test_esc32.c
+test_esc32.srcs   += mcu_periph/can.c $(SRC_ARCH)/mcu_periph/can_arch.c
+
+##
+## simple test of the esc32 motor controller nodes via CAN
+##
+test_esc32_node.ARCHDIR = $(ARCH)
+test_esc32_node.CFLAGS += $(COMMON_TEST_CFLAGS)
+test_esc32_node.srcs   += $(COMMON_TEST_SRCS)
+test_esc32_node.CFLAGS += $(COMMON_TELEMETRY_CFLAGS)
+test_esc32_node.CFLAGS += -DUSE_CAN_EXT_ID
+test_esc32_node.srcs   += $(COMMON_TELEMETRY_SRCS)
+test_esc32_node.srcs   += test/test_esc32_node.c
+test_esc32_node.srcs   += mcu_periph/can.c $(SRC_ARCH)/mcu_periph/can_arch.c
+
 #
 # Test manual : a simple test with rc and servos
 # add the desired actuators and radio_control subsystem to this target

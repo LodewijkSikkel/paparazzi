@@ -76,13 +76,12 @@ static inline void main_periodic_task(void)
 {
 
   tx_data[0] += 1;
-  ppz_can_transmit(0, tx_data, 8);
+  uint32_t id = 0;
+  ppz_can_transmit(id | 0, tx_data, 8);
 
-  LED_PERIODIC();
-  DOWNLINK_SEND_ALIVE(DefaultChannel, DefaultDevice, 16, MD5SUM);
+  //LED_PERIODIC();
+  //DOWNLINK_SEND_ALIVE(DefaultChannel, DefaultDevice, 16, MD5SUM);
 }
-
-
 
 static inline void main_event_task(void)
 {
