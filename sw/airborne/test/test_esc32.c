@@ -26,11 +26,18 @@
 
 #define NB_ACTUATORS 1
 
+#define MOTORS_CAN_RETRIES 3
+
+#define MOTORS_CAN_TELEM_RATE 10
+
 #include "mcu.h"
 #include "mcu_periph/sys_time.h"
-#include "led.h"
 #include "mcu_periph/uart.h"
 #include "mcu_periph/can.h"
+
+#include "led.h"
+
+#include "subsystems/datalink/telemetry.h"
 
 #include <std.h>
 #include <stdint.h>
@@ -160,30 +167,61 @@ typedef struct {
 
 enum ESC32_status {
   ESC32_STATUS_INIT = 0,
-  ESC32_STATUS_MELODY,
   ESC32_STATUS_UNARMED,
+  ESC32_STATUS_STARTING,
   ESC32_STATUS_RUNNING
 };
+
+typedef void can_telem_callback_t(uint8_t node_ID, uint8_t doc, void *p);
 
 typedef struct {
     enum ESC32_status status;
     can_nodes_t nodes[(ESC32_CAN_TID_MASK>>9)+1];
+    can_telem_callback_t *telem_funcs[ESC32_CAN_TYPE_NUM-1];
     uint8_t next_node_slot;
     uint8_t seq_ID;
 } can_struct_t;
 
 can_struct_t can_data;
 
+typedef struct {
+    unsigned int state : 3;
+    unsigned int vin : 12; // x 100
+    unsigned int amps : 14; // x 100
+    unsigned int rpm : 15;
+    unsigned int duty : 8;  // x (255/100)
+    unsigned int temp : 9;  // (Deg C + 32) * 4
+    unsigned int errCode : 3;
+}  __attribute__((packed)) esc32_can_status_t;
+
+typedef struct {
+  can_nodes_t *can[NB_ACTUATORS];
+  esc32_can_status_t can_status[NB_ACTUATORS];
+} motors_struct_t;
+
+motors_struct_t motors_data;
+
 static inline void main_init(void);
+
 static inline void main_periodic_task(void);
 static inline void main_event_task(void);
+
+void motors_receive_telem(uint8_t canId, uint8_t doc, void *p);
 
 void esc32_can_init(void);
 void esc32_can_command_beep(uint32_t tt, uint8_t tid, uint16_t freq, uint16_t dur);
 void esc32_can_command_arm(uint32_t tt, uint8_t tid);
 void esc32_can_command_disarm(uint32_t tt, uint8_t tid);
+
+can_nodes_t *can_find_node(uint8_t type);
+
+void esc32_can_set_telemetry_value(uint32_t tt, uint8_t tid, uint8_t index, uint8_t value);
+void esc32_can_set_telemetry_rate(uint32_t tt, uint8_t tid, uint16_t rate);
+
 void esc32_can_start(uint32_t tt, uint8_t tid);
 void esc32_can_reset_bus(void);
+
+void esc32_can_telem_register(can_telem_callback_t *func, uint8_t type);
 
 uint8_t esc32_can_send(uint32_t ID, uint8_t t_ID, uint8_t length, uint8_t *data);
 
@@ -210,12 +248,12 @@ void esc32_can_init(void)
 }
 
 void esc32_can_command_beep(uint32_t tt, uint8_t tid, uint16_t freq, uint16_t dur) {
-    uint16_t data[2];
+  uint16_t data[2];
 
-    data[0] = freq;
-    data[1] = dur;
+  data[0] = freq;
+  data[1] = dur;
 
-    return esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_BEEP<<19), tid, 4, (uint8_t *)&data);
+  esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_BEEP<<19), tid, 4, (uint8_t *)&data);
 }
 
 void esc32_can_command_arm(uint32_t tt, uint8_t tid) {
@@ -226,6 +264,33 @@ void esc32_can_command_disarm(uint32_t tt, uint8_t tid) {
   esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_DISARM<<19), tid, 0, 0);
 }
 
+can_nodes_t *can_find_node(uint8_t type) {
+  uint8_t i;
+
+  for (i = 0; i <= (ESC32_CAN_TID_MASK>>9); i++)
+      if (can_data.nodes[i].type == type)
+          return &can_data.nodes[i];
+
+  return 0;
+}
+
+void esc32_can_set_telemetry_value(uint32_t tt, uint8_t tid, uint8_t index, uint8_t value) {
+  uint8_t data[2];
+
+  data[0] = index;
+  data[1] = value;
+
+  esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_TELEM_VALUE<<19), tid, 2, data);
+}
+
+void esc32_can_set_telemetry_rate(uint32_t tt, uint8_t tid, uint16_t rate) {
+  uint16_t data;
+
+  data = rate;
+
+  esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_TELEM_RATE<<19), tid, 2, (uint8_t *)&data);
+}
+
 void esc32_can_start(uint32_t tt, uint8_t tid) {
   esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_START << 19), tid, 0, 0);
 }
@@ -234,9 +299,13 @@ void esc32_can_reset_bus(void) {
   esc32_can_send(ESC32_CAN_LCC_EXCEPTION | ESC32_CAN_TT_GROUP | ESC32_CAN_FID_RESET_BUS, 0, 0, 0);
 }
 
+void esc32_can_telem_register(can_telem_callback_t *func, uint8_t type) {
+    can_data.telem_funcs[type] = func;
+}
+
 uint8_t esc32_can_send(uint32_t ID, uint8_t t_ID, uint8_t length, uint8_t *data)
 {
-  uint8_t seq_ID = 0;
+  uint8_t seq_ID = esc32_can_get_seq_id();
 
   ppz_can_transmit((ID >> 3) | ((t_ID & 0x1f) << 6) | seq_ID, data, length);
   
@@ -278,9 +347,9 @@ static void esc32_can_grant_addr(uint8_t *data) {
 void esc32_can_rx_cb(uint32_t id, uint8_t *data, int len __attribute__((unused)))
 {
   // deconstruct the message ID
-  //uint8_t doc = ((id<<3) & ESC32_CAN_DOC_MASK)>>19;
-  //uint8_t sid = ((id<<3) & ESC32_CAN_SID_MASK)>>14;
-  //uint8_t seq_ID = ((id<<3) & ESC32_CAN_SEQ_MASK)>>3;
+  uint8_t doc = ((id<<3) & ESC32_CAN_DOC_MASK)>>19;
+  uint8_t sid = ((id<<3) & ESC32_CAN_SID_MASK)>>14;
+  // uint8_t seq_ID = ((id<<3) & ESC32_CAN_SEQ_MASK)>>3;
 
   switch ((id<<3) & ESC32_CAN_FID_MASK) {
       case ESC32_CAN_FID_REQ_ADDR:
@@ -289,7 +358,10 @@ void esc32_can_rx_cb(uint32_t id, uint8_t *data, int len __attribute__((unused))
 
       // telemetry callbacks
       case ESC32_CAN_FID_TELEM:
-          // do nothing
+            if (can_data.telem_funcs[can_data.nodes[sid-1].type])
+                can_data.telem_funcs[can_data.nodes[sid-1].type](can_data.nodes[sid-1].can_ID, doc, data);
+            break;
+
       case ESC32_CAN_FID_CMD:
           // do nothing
       case ESC32_CAN_FID_ACK:
@@ -318,12 +390,36 @@ int main(void)
   return 0;
 }
 
+static void motors_can_request_telem(int motor_ID) {
+#if ESC32_CAN_TELEM_RATE > 0
+  // request telemetry
+  esc32_can_set_telemetry_value(ESC32_CAN_TT_NODE, motors_data.can[motor_ID]->network_ID, 0, ESC32_CAN_TELEM_STATUS);
+  esc32_can_set_telemetry_rate(ESC32_CAN_TT_NODE, motors_data.can[motor_ID]->network_ID, ESC32_CAN_TELEM_RATE);
+#endif
+}
+
+static void motors_init(int i) {
+  uint8_t num_try = MOTORS_CAN_RETRIES;
+  uint8_t motor_ID = i;
+
+  while (num_try-- && (motors_data.can[motor_ID] = can_find_node(ESC32_CAN_TYPE_ESC)) == 0)
+      sys_time_usleep(100);
+
+  if (motors_data.can[motor_ID] == 0) {
+      LED_ON(2);
+  }
+  else {
+      motors_can_request_telem(motor_ID);
+  }
+}
+
 static inline void main_init(void)
 {
   mcu_init();
-  sys_time_register_timer((0.5 / PERIODIC_FREQUENCY), NULL);
+  sys_time_register_timer((1. / PERIODIC_FREQUENCY), NULL);
 
-  sys_time_usleep(3000000);
+  // wait 1000ms 
+  sys_time_usleep(1000000);
 
   // initialize the can_data struct
   can_data.status = ESC32_STATUS_INIT;
@@ -338,22 +434,50 @@ static inline void main_init(void)
   // arm the group
   if (can_data.status == ESC32_STATUS_UNARMED) {
     esc32_can_command_arm(ESC32_CAN_TT_GROUP, 1);
-    can_data.status = ESC32_STATUS_MELODY;
+    can_data.status = ESC32_STATUS_STARTING;
   }
   // start the group
-  if (can_data.status == ESC32_STATUS_MELODY) {
+  if (can_data.status == ESC32_STATUS_STARTING) {
     esc32_can_start(ESC32_CAN_TT_GROUP, 1);
     can_data.status = ESC32_STATUS_RUNNING;
   }
+
+  // register the telemetry callback function
+  esc32_can_telem_register(motors_receive_telem, ESC32_CAN_TYPE_ESC);
+
+  // initialize the motor driver
+  motors_init(0);
 }
 
 static inline void main_periodic_task(void)
 {
+  //RunOnceEvery(100, {DOWNLINK_SEND_ALIVE(DefaultChannel, DefaultDevice, 16, MD5SUM);});
+
+  // uint16_t vin = motors_data.can_status[0].vin;
+
+  // uint16_t temp_16 = 0;
+
+  // uint8_t temp_8 = 0;
+
+  // RunOnceEvery(100, {DOWNLINK_SEND_ESC32(DefaultChannel, DefaultDevice, 
+  //                     &temp_8,
+  //                     &temp_16,
+  //                     &temp_16,
+  //                     &temp_16,
+  //                     &temp_8,
+  //                     &temp_16,
+  //                     &temp_8);});
 }
 
 static inline void main_event_task(void)
 {
-  // commence a beep 
-  if (can_data.status == ESC32_STATUS_RUNNING)
-    esc32_can_command_beep(ESC32_CAN_TT_GROUP, 1, 600, 100);
+}
+
+void motors_receive_telem(uint8_t can_ID, uint8_t doc, void *p) {
+  uint32_t *data = (uint32_t *)p;
+  uint32_t *storage = (uint32_t *)&motors_data.can_status[can_ID-1];
+
+  // copy status data to our storage (8 bytes)
+  storage[0] = data[0];
+  storage[1] = data[1];
 }

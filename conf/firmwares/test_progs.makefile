@@ -258,8 +258,8 @@ test_esc32.ARCHDIR = $(ARCH)
 test_esc32.CFLAGS += $(COMMON_TEST_CFLAGS)
 test_esc32.srcs   += $(COMMON_TEST_SRCS)
 test_esc32.CFLAGS += $(COMMON_TELEMETRY_CFLAGS)
-test_esc32.CFLAGS += -DUSE_CAN_EXT_ID
 test_esc32.srcs   += $(COMMON_TELEMETRY_SRCS)
+test_esc32.CFLAGS += -DUSE_CAN_EXT_ID
 test_esc32.srcs   += test/test_esc32.c
 test_esc32.srcs   += mcu_periph/can.c $(SRC_ARCH)/mcu_periph/can_arch.c
 

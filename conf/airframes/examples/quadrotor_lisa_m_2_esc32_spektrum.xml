@@ -25,7 +25,7 @@
     </subsystem>
 
     <subsystem name="motor_mixing"/>
-    <subsystem name="actuators"     type="ESC32">
+    <subsystem name="actuators"     type="pwm">
       <configure name="SERVOS_ESC32_NB" value="1"/>
     </subsystem>
     <subsystem name="telemetry"     type="transparent"/>
@@ -41,12 +41,13 @@
   </firmware>
 
   <firmware name="test_progs">
+    <target name="test_telemetry" board="lisa_m_2.0"/>
     <target name="test_can" board="lisa_m_2.0"/>
     <target name="test_esc32" board="lisa_m_2.0"/>
     <target name="test_esc32_node" board="lisa_m_2.0"/>
   </firmware>
 
-  <servos driver="ESC32">
+  <servos driver="Pwm">
     <servo name="FRONT"   no="0" min="1000" neutral="1100" max="1900"/>
 <!--     <servo name="BACK"    no="1" min="1000" neutral="1100" max="1900"/>
     <servo name="RIGHT"   no="2" min="1000" neutral="1100" max="1900"/>
