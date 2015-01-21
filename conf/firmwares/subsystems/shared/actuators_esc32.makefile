@@ -7,11 +7,11 @@
 #
 
 $(TARGET).CFLAGS += -DACTUATORS -DUSE_CAN_EXT_ID
-ACTUATORS_ESC32_SRCS = mcu_periph/can.c $(SRC_ARCH)/mcu_periph/can_arch.c subsystems/actuators/actuators_esc32.c
-
+ACTUATORS_ESC32_SRCS += mcu_periph/can.c $(SRC_ARCH)/mcu_periph/can_arch.c 
+ACTUATORS_ESC32_SRCS += subsystems/actuators/actuators_can.c 
+ACTUATORS_ESC32_SRCS += subsystems/actuators/actuators_esc32.c
 
 ap.srcs   += $(ACTUATORS_ESC32_SRCS)
-
 
 # Simulator
 #nps.srcs += subsystems/actuators/actuators_asctec_v2.c

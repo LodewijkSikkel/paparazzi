@@ -1,0 +1,21 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="esc32_telemetry" dir="actuators">
+  <doc>
+    <description>Redirect telemetry of the ESC32 over the datalink</description>
+  </doc>
+  <settings>
+  </settings>
+
+  <header>
+    <file name="esc32_telemetry.h"/>
+  </header>
+  <init fun="esc32_telemetry_init()"/>
+  <periodic fun="esc32_telemetry_periodic()" freq="100"/>
+
+  <makefile target="ap">
+    <file name="esc32_telemetry.c"/>
+  </makefile>
+
+</module>
+

@@ -18,7 +18,6 @@
  * the Free Software Foundation, 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
  */
-
 /**
  * @file test_esc32.c
  *
@@ -36,8 +35,6 @@
 #include "mcu_periph/can.h"
 
 #include "led.h"
-
-#include "subsystems/datalink/telemetry.h"
 
 #include <std.h>
 #include <stdint.h>
@@ -84,7 +81,7 @@
 
 // Target ID
 // 5 bits [10:6]
-#define ESC32_CAN_TID_MASK            ((uint32_t)0x1f<<9)
+#define ESC32_CAN_t_id_MASK            ((uint32_t)0x1f<<9)
 
 // Sequence ID
 // 6 bits [5:0]
@@ -165,6 +162,7 @@ typedef struct {
     uint8_t subgroup_ID;
 } can_nodes_t;
 
+
 enum ESC32_status {
   ESC32_STATUS_INIT = 0,
   ESC32_STATUS_UNARMED,
@@ -176,7 +174,7 @@ typedef void can_telem_callback_t(uint8_t node_ID, uint8_t doc, void *p);
 
 typedef struct {
     enum ESC32_status status;
-    can_nodes_t nodes[(ESC32_CAN_TID_MASK>>9)+1];
+    can_nodes_t nodes[(ESC32_CAN_t_id_MASK>>9)+1];
     can_telem_callback_t *telem_funcs[ESC32_CAN_TYPE_NUM-1];
     uint8_t next_node_slot;
     uint8_t seq_ID;
@@ -209,19 +207,21 @@ static inline void main_event_task(void);
 void motors_receive_telem(uint8_t canId, uint8_t doc, void *p);
 
 void esc32_can_init(void);
-void esc32_can_command_beep(uint32_t tt, uint8_t tid, uint16_t freq, uint16_t dur);
-void esc32_can_command_arm(uint32_t tt, uint8_t tid);
-void esc32_can_command_disarm(uint32_t tt, uint8_t tid);
+void esc32_can_command_beep(uint32_t tt, uint8_t t_id, uint16_t freq, uint16_t dur);
+void esc32_can_command_arm(uint32_t tt, uint8_t t_id);
+void esc32_can_command_disarm(uint32_t tt, uint8_t t_id);
 
-can_nodes_t *can_find_node(uint8_t type);
+can_nodes_t *esc32_can_find_node(uint8_t type);
 
-void esc32_can_set_telemetry_value(uint32_t tt, uint8_t tid, uint8_t index, uint8_t value);
-void esc32_can_set_telemetry_rate(uint32_t tt, uint8_t tid, uint16_t rate);
+void esc32_can_set_telemetry_value(uint32_t tt, uint8_t t_id, uint8_t index, uint8_t value);
+void esc32_can_set_telemetry_rate(uint32_t tt, uint8_t t_id, uint16_t rate);
 
-void esc32_can_start(uint32_t tt, uint8_t tid);
+void esc32_can_start(uint32_t tt, uint8_t t_id);
 void esc32_can_reset_bus(void);
 
 void esc32_can_telem_register(can_telem_callback_t *func, uint8_t type);
+
+void esc32_can_command_setpoint16(uint8_t t_id, uint8_t *data);
 
 uint8_t esc32_can_send(uint32_t ID, uint8_t t_ID, uint8_t length, uint8_t *data);
 
@@ -247,52 +247,52 @@ void esc32_can_init(void)
   can_data.status = ESC32_STATUS_UNARMED;
 }
 
-void esc32_can_command_beep(uint32_t tt, uint8_t tid, uint16_t freq, uint16_t dur) {
+void esc32_can_command_beep(uint32_t tt, uint8_t t_id, uint16_t freq, uint16_t dur) {
   uint16_t data[2];
 
   data[0] = freq;
   data[1] = dur;
 
-  esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_BEEP<<19), tid, 4, (uint8_t *)&data);
+  esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_BEEP<<19), t_id, 4, (uint8_t *)&data);
 }
 
-void esc32_can_command_arm(uint32_t tt, uint8_t tid) {
-  esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_ARM<<19), tid, 0, 0);
+void esc32_can_command_arm(uint32_t tt, uint8_t t_id) {
+  esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_ARM<<19), t_id, 0, 0);
 }
 
-void esc32_can_command_disarm(uint32_t tt, uint8_t tid) {
-  esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_DISARM<<19), tid, 0, 0);
+void esc32_can_command_disarm(uint32_t tt, uint8_t t_id) {
+  esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_DISARM<<19), t_id, 0, 0);
 }
 
-can_nodes_t *can_find_node(uint8_t type) {
+can_nodes_t *esc32_can_find_node(uint8_t type) {
   uint8_t i;
 
-  for (i = 0; i <= (ESC32_CAN_TID_MASK>>9); i++)
+  for (i = 0; i <= (ESC32_CAN_t_id_MASK>>9); i++)
       if (can_data.nodes[i].type == type)
           return &can_data.nodes[i];
 
   return 0;
 }
 
-void esc32_can_set_telemetry_value(uint32_t tt, uint8_t tid, uint8_t index, uint8_t value) {
+void esc32_can_set_telemetry_value(uint32_t tt, uint8_t t_id, uint8_t index, uint8_t value) {
   uint8_t data[2];
 
   data[0] = index;
   data[1] = value;
 
-  esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_TELEM_VALUE<<19), tid, 2, data);
+  esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_TELEM_VALUE<<19), t_id, 2, data);
 }
 
-void esc32_can_set_telemetry_rate(uint32_t tt, uint8_t tid, uint16_t rate) {
+void esc32_can_set_telemetry_rate(uint32_t tt, uint8_t t_id, uint16_t rate) {
   uint16_t data;
 
   data = rate;
 
-  esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_TELEM_RATE<<19), tid, 2, (uint8_t *)&data);
+  esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_TELEM_RATE<<19), t_id, 2, (uint8_t *)&data);
 }
 
-void esc32_can_start(uint32_t tt, uint8_t tid) {
-  esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_START << 19), tid, 0, 0);
+void esc32_can_start(uint32_t tt, uint8_t t_id) {
+  esc32_can_send(ESC32_CAN_LCC_NORMAL | tt | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_START << 19), t_id, 0, 0);
 }
 
 void esc32_can_reset_bus(void) {
@@ -301,6 +301,10 @@ void esc32_can_reset_bus(void) {
 
 void esc32_can_telem_register(can_telem_callback_t *func, uint8_t type) {
     can_data.telem_funcs[type] = func;
+}
+
+void esc32_can_command_setpoint16(uint8_t t_id, uint8_t *data) {
+    esc32_can_send(ESC32_CAN_LCC_HIGH | ESC32_CAN_TT_GROUP | ESC32_CAN_FID_CMD | (ESC32_CAN_CMD_SETPOINT16<<19), t_id, 8, data);
 }
 
 uint8_t esc32_can_send(uint32_t ID, uint8_t t_ID, uint8_t length, uint8_t *data)
@@ -328,16 +332,16 @@ static void esc32_can_grant_addr(uint8_t *data) {
   if (i == can_data.next_node_slot)
       can_data.next_node_slot++;
 
-  if (i < (ESC32_CAN_TID_MASK>>9)) {
+  if (i < (ESC32_CAN_t_id_MASK>>9)) {
       // store in table
       can_data.nodes[i].network_ID = i+1;
       can_data.nodes[i].uuid = uuid;
       can_data.nodes[i].type = data[4];
       can_data.nodes[i].can_ID = data[5];
 
-      // send groupId & subgroupId in bytes 5 & 6
-      data[4] = (i / 4) + 1; //GroupId
-      data[5] = (i % 4) + 1; //SubGroupId
+      // send group ID & subgroup ID in bytes 5 & 6
+      data[4] = (i / 4) + 1; // group ID
+      data[5] = (i % 4) + 1; // subgroup ID
 
       // respond
       esc32_can_send(ESC32_CAN_LCC_HIGH | ESC32_CAN_TT_NODE | ESC32_CAN_FID_GRANT_ADDR, i+1, 6, data);
@@ -431,46 +435,46 @@ static inline void main_init(void)
   // wait 100ms until all nodes are registered
   sys_time_usleep(100000);
 
-  // arm the group
-  if (can_data.status == ESC32_STATUS_UNARMED) {
-    esc32_can_command_arm(ESC32_CAN_TT_GROUP, 1);
-    can_data.status = ESC32_STATUS_STARTING;
-  }
-  // start the group
-  if (can_data.status == ESC32_STATUS_STARTING) {
-    esc32_can_start(ESC32_CAN_TT_GROUP, 1);
-    can_data.status = ESC32_STATUS_RUNNING;
-  }
-
   // register the telemetry callback function
-  esc32_can_telem_register(motors_receive_telem, ESC32_CAN_TYPE_ESC);
+  // esc32_can_telem_register(motors_receive_telem, ESC32_CAN_TYPE_ESC);
 
   // initialize the motor driver
-  motors_init(0);
+  // motors_init(0);
+
 }
 
 static inline void main_periodic_task(void)
 {
-  //RunOnceEvery(100, {DOWNLINK_SEND_ALIVE(DefaultChannel, DefaultDevice, 16, MD5SUM);});
-
-  // uint16_t vin = motors_data.can_status[0].vin;
-
-  // uint16_t temp_16 = 0;
-
-  // uint8_t temp_8 = 0;
-
-  // RunOnceEvery(100, {DOWNLINK_SEND_ESC32(DefaultChannel, DefaultDevice, 
-  //                     &temp_8,
-  //                     &temp_16,
-  //                     &temp_16,
-  //                     &temp_16,
-  //                     &temp_8,
-  //                     &temp_16,
-  //                     &temp_8);});
 }
+
+uint16_t cmds[4] = {10000, 10000, 10000, 10000};
 
 static inline void main_event_task(void)
 {
+  switch(can_data.status) {
+    case ESC32_STATUS_UNARMED:
+      esc32_can_command_arm(ESC32_CAN_TT_GROUP, 1);
+      can_data.status = ESC32_STATUS_STARTING;
+      break;
+
+    case ESC32_STATUS_STARTING:
+      // esc32_can_start(ESC32_CAN_TT_GROUP, 1);
+      esc32_can_command_setpoint16(1, (uint8_t *) cmds);
+      can_data.status = ESC32_STATUS_RUNNING;
+      break;
+
+    case ESC32_STATUS_RUNNING:
+      esc32_can_command_setpoint16(1, (uint8_t *) cmds);
+
+      cmds[0] = cmds[0]+100;
+      cmds[1] = cmds[1]+100;
+      cmds[2] = cmds[2]+100;
+      cmds[3] = cmds[3]+100;
+      break;
+
+    default :
+      break;
+  }
 }
 
 void motors_receive_telem(uint8_t can_ID, uint8_t doc, void *p) {

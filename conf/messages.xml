@@ -184,7 +184,11 @@
     <field name="segment_north_2" type="float" unit="m"/>
   </message>
 
-  <!-- ID 23 is free -->
+  <message name="ESC32" id="23">
+    <field name="nodes" type="uint8"/>
+    <field name="state" type="uint8[]"/>
+    <field name="rpm" type="uint8[]"/>
+  </message>
   <!-- ID 24 is free -->
 
   <message name="SVINFO" id="25">
