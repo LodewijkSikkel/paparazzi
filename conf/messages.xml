@@ -185,9 +185,15 @@
   </message>
 
   <message name="ESC32" id="23">
-    <field name="nodes" type="uint8"/>
-    <field name="state" type="uint8[]"/>
-    <field name="rpm" type="uint8[]"/>
+    <field name="nb_nodes" type="uint8"/>
+    <field name="timeouts" type="uint32"/>
+    <!-- <field name="state" type="uint8[]"/> -->
+    <field name="vin" type="uint16[]"/>
+<!--     <field name="amps" type="uint16[]"/>
+    <field name="rpm" type="uint16[]"/>
+    <field name="duty" type="uint8[]"/>
+    <field name="temp" type="uint16[]"/>
+    <field name="err_code" type="uint8[]"/> -->
   </message>
   <!-- ID 24 is free -->
 

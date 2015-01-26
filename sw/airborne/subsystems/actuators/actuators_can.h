@@ -79,7 +79,7 @@
 
 // Target ID
 // 5 bits [10:6]
-#define CAN_t_id_MASK            ((uint32_t)0x1f<<9)
+#define CAN_TID_MASK            ((uint32_t)0x1f<<9)
 
 // Sequence ID
 // 6 bits [5:0]
@@ -123,18 +123,18 @@ enum {
 
 // data types
 enum {
-  actuators_can_data_GROUP = 1,
-  actuators_can_data_TYPE,
-  actuators_can_data_ID,
-  actuators_can_data_INPUT_MODE,
-  actuators_can_data_RUN_MODE,
-  actuators_can_data_STATE,
-  actuators_can_data_PARAM_ID,
-  actuators_can_data_TELEM,
-  actuators_can_data_VERSION,
-  actuators_can_data_VALUE,
-  actuators_can_data_PARAM_NAME1,
-  actuators_can_data_PARAM_NAME2
+  CAN_DATA_GROUP = 1,
+  CAN_DATA_TYPE,
+  CAN_DATA_ID,
+  CAN_DATA_INPUT_MODE,
+  CAN_DATA_RUN_MODE,
+  CAN_DATA_STATE,
+  CAN_DATA_PARAM_ID,
+  CAN_DATA_TELEM,
+  CAN_DATA_VERSION,
+  CAN_DATA_VALUE,
+  CAN_DATA_PARAM_NAME1,
+  CAN_DATA_PARAM_NAME2
 };
 
 // telemetry values
@@ -170,7 +170,7 @@ typedef struct {
 typedef void can_telem_callback_t(uint8_t node_id, uint8_t doc, void *p);
 
 typedef struct {
-    can_nodes_t nodes[(CAN_t_id_MASK>>9)+1];
+    can_nodes_t nodes[(CAN_TID_MASK>>9)+1];
 
     can_telem_callback_t *telem_funcs[CAN_TYPE_NUM-1];
     uint32_t timeouts;
@@ -183,43 +183,46 @@ typedef struct {
     uint8_t initialized;
 } can_struct_t;
 
-extern can_struct_t actuators_can_data;
+extern can_struct_t can_data;
+
+// set the values of a group
+uint8_t *can_set_group(uint8_t tid, uint8_t gid, uint8_t sgid);
 
 // initialize the CAN driver
-extern void actuators_can_init(void);
+extern void init_can(void);
 
 // send a message over the CAN bus
-extern uint8_t can_send(uint32_t id, uint8_t t_id, uint8_t length, uint8_t *data);
+extern uint8_t can_send(uint32_t id, uint8_t tid, uint8_t length, uint8_t *data);
 
 // CAN bus callback function
 extern void actuators_can_rx_callback(uint32_t id, uint8_t *data, int len);
 
 // send a beep command to a node or group
-extern void can_command_beep(uint32_t tt, uint8_t t_id, uint16_t freq, uint16_t dur);
+extern void can_command_beep(uint32_t tt, uint8_t tid, uint16_t freq, uint16_t dur);
 
 // get the state of a node
-uint8_t *can_get_state(uint8_t t_id);
+uint8_t *can_get_state(uint8_t tid);
 
 // arm a node or group
-extern void can_command_arm(uint32_t tt, uint8_t t_id);
+extern void can_command_arm(uint32_t tt, uint8_t tid);
 
 // disarm a node or group
-extern void can_command_disarm(uint32_t tt, uint8_t t_id);
+extern void can_command_disarm(uint32_t tt, uint8_t tid);
 
 // find the pointer to a CAN node (default: 3 retries)
-extern can_nodes_t *can_find_node(uint8_t type);
+extern can_nodes_t *can_find_node(uint8_t type, uint8_t can_id);
 
 // set the telemetry (default: status)
-extern void can_set_telem_value(uint32_t tt, uint8_t t_id, uint8_t index, uint8_t value);
+extern void can_set_telem_value_no_wait(uint32_t tt, uint8_t tid, uint8_t index, uint8_t value);
 
 // define the telemetery rate (default: 100)
-extern void can_set_telem_rate(uint32_t tt, uint8_t t_id, uint16_t rate);
+extern void can_set_telem_rate_no_wait(uint32_t tt, uint8_t tid, uint16_t rate);
 
 // start the node or group
-extern void can_command_start(uint32_t tt, uint8_t t_id);
+extern void can_command_start(uint32_t tt, uint8_t tid);
 
 // start the node or group
-uint8_t *can_command_stop(uint32_t tt, uint8_t t_id);
+uint8_t *can_command_stop(uint32_t tt, uint8_t tid);
 
 // reset the CAN bus
 extern void can_reset_bus(void);
@@ -228,6 +231,6 @@ extern void can_reset_bus(void);
 extern void can_telem_register(can_telem_callback_t *func, uint8_t type);
 
 // send a 16-bit setpoint to a node or group
-extern void can_command_setpoint16(uint8_t t_id, uint8_t *data);
+extern void can_command_setpoint16(uint8_t tid, uint8_t *data);
 
 #endif /* ACTUATORS_CAN */

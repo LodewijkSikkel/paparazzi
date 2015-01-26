@@ -58,22 +58,31 @@ typedef struct {
 
 typedef struct {
   can_nodes_t *can[MOTORS_NUM];
+  uint16_t *can_ptrs[MOTORS_NUM];
   can_group16_t can_groups[MOTORS_NUM/MOTORS_CAN_GROUP_SIZE];
   esc32_can_status_t can_status[MOTORS_NUM];
+  uint32_t can_status_time[MOTORS_NUM];
+  uint32_t can_telem_req_time[MOTORS_NUM];
   uint8_t num_groups;
-  uint16_t cmds[MOTORS_NUM];
-} esc32_struct_t;
+} motors_struct_t;
 
-extern enum esc32_states esc32_state[MOTORS_NUM];
-
-extern esc32_struct_t esc32_data;
+extern motors_struct_t motors_data;
 
 static inline float motors_max(void) {
     return MOTORS_SCALE;
 }
 
+// process incoming telemetry
+void esc32_receive_telem(uint8_t can_id, uint8_t doc, void *data_ptr);
+
 // initialize all esc32 speed controllers
 extern void esc32_init(void);
+
+// send values to the esc32 nodes
+void esc32_send_values(uint8_t motor_id, uint16_t value);
+
+// send values to the esc32 group
+void esc32_can_send_groups(void);
 
 // arm the esc32 speed controllers
 extern int esc32_arm(void);
@@ -81,27 +90,9 @@ extern int esc32_arm(void);
 // disarm the esc32 speed controllers
 extern void esc32_disarm(void);
 
-// commit the motor commands
-extern void esc32_commit(void);
-
-// set the motor commands
-extern void esc32_set(uint8_t i, uint16_t v);
-
-// process a configuration command
-extern void esc32_config_cmd(uint8_t i);
-
-// set the telemetry (default: status)
-extern void esc32_set_telem_value(uint32_t tt, uint8_t t_id, uint8_t index, uint8_t value);
-
-// define the telemetery rate (default: 100)
-extern void esc32_set_telem_rate(uint32_t tt, uint8_t t_id, uint16_t rate);
-
-// process telemetry 
-extern void esc32_receive_telem(uint8_t can_id, uint8_t doc, void *data_ptr);
-
 // paparazzi placeholders
-#define ActuatorESC32Set(_i, _v) { esc32_set(_i, _v); }
+#define ActuatorESC32Set(_i, _v) { esc32_send_values(_i, _v); }
 #define ActuatorsESC32Init() esc32_init()
-#define ActuatorsESC32Commit() esc32_commit()
+#define ActuatorsESC32Commit() esc32_can_send_groups()
 
 #endif /* ACTUATORS_ESC32_H */

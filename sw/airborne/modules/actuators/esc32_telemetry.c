@@ -15,6 +15,10 @@ void esc32_telemetry_init(void)
 
 void esc32_telemetry_periodic(void)
 {
-  DOWNLINK_SEND_ESC32(DefaultChannel, DefaultDevice, &actuators_can_data.next_node_slot, 4, (uint8_t *)&esc32_state);
+  uint16_t vin[4] = {0, 0, 0, 0};
+  for (int i = 0; i < 4; i++)
+    vin[i] = motors_data.can_status[i].vin;
+
+  DOWNLINK_SEND_ESC32(DefaultChannel, DefaultDevice, &can_data.next_node_slot, &can_data.timeouts, 4, vin);
 }
 

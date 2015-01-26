@@ -27,7 +27,7 @@
 
 #define MOTORS_CAN_RETRIES 3
 
-#define MOTORS_CAN_TELEM_RATE 10
+#define MOTORS_CAN_TELEM_RATE 100
 
 #include "mcu.h"
 #include "mcu_periph/sys_time.h"
@@ -81,7 +81,7 @@
 
 // Target ID
 // 5 bits [10:6]
-#define ESC32_CAN_t_id_MASK            ((uint32_t)0x1f<<9)
+#define ESC32_CAN_TID_MASK            ((uint32_t)0x1f<<9)
 
 // Sequence ID
 // 6 bits [5:0]
@@ -174,7 +174,7 @@ typedef void can_telem_callback_t(uint8_t node_ID, uint8_t doc, void *p);
 
 typedef struct {
     enum ESC32_status status;
-    can_nodes_t nodes[(ESC32_CAN_t_id_MASK>>9)+1];
+    can_nodes_t nodes[(ESC32_CAN_TID_MASK>>9)+1];
     can_telem_callback_t *telem_funcs[ESC32_CAN_TYPE_NUM-1];
     uint8_t next_node_slot;
     uint8_t seq_ID;
@@ -267,7 +267,7 @@ void esc32_can_command_disarm(uint32_t tt, uint8_t t_id) {
 can_nodes_t *esc32_can_find_node(uint8_t type) {
   uint8_t i;
 
-  for (i = 0; i <= (ESC32_CAN_t_id_MASK>>9); i++)
+  for (i = 0; i <= (ESC32_CAN_TID_MASK>>9); i++)
       if (can_data.nodes[i].type == type)
           return &can_data.nodes[i];
 
@@ -332,7 +332,7 @@ static void esc32_can_grant_addr(uint8_t *data) {
   if (i == can_data.next_node_slot)
       can_data.next_node_slot++;
 
-  if (i < (ESC32_CAN_t_id_MASK>>9)) {
+  if (i < (ESC32_CAN_TID_MASK>>9)) {
       // store in table
       can_data.nodes[i].network_ID = i+1;
       can_data.nodes[i].uuid = uuid;
@@ -395,10 +395,11 @@ int main(void)
 }
 
 static void motors_can_request_telem(int motor_ID) {
-#if ESC32_CAN_TELEM_RATE > 0
+#if MOTORS_CAN_TELEM_RATE > 0
   // request telemetry
   esc32_can_set_telemetry_value(ESC32_CAN_TT_NODE, motors_data.can[motor_ID]->network_ID, 0, ESC32_CAN_TELEM_STATUS);
-  esc32_can_set_telemetry_rate(ESC32_CAN_TT_NODE, motors_data.can[motor_ID]->network_ID, ESC32_CAN_TELEM_RATE);
+
+  esc32_can_set_telemetry_rate(ESC32_CAN_TT_NODE, motors_data.can[motor_ID]->network_ID, MOTORS_CAN_TELEM_RATE);
 #endif
 }
 
@@ -406,13 +407,10 @@ static void motors_init(int i) {
   uint8_t num_try = MOTORS_CAN_RETRIES;
   uint8_t motor_ID = i;
 
-  while (num_try-- && (motors_data.can[motor_ID] = can_find_node(ESC32_CAN_TYPE_ESC)) == 0)
-      sys_time_usleep(100);
+  while (num_try-- && (motors_data.can[motor_ID] = esc32_can_find_node(ESC32_CAN_TYPE_ESC)) == 0)
+      sys_time_usleep(1000); // wait 1ms
 
-  if (motors_data.can[motor_ID] == 0) {
-      LED_ON(2);
-  }
-  else {
+  if (motors_data.can[motor_ID] != 0) {
       motors_can_request_telem(motor_ID);
   }
 }
@@ -436,10 +434,10 @@ static inline void main_init(void)
   sys_time_usleep(100000);
 
   // register the telemetry callback function
-  // esc32_can_telem_register(motors_receive_telem, ESC32_CAN_TYPE_ESC);
+  esc32_can_telem_register(motors_receive_telem, ESC32_CAN_TYPE_ESC);
 
   // initialize the motor driver
-  // motors_init(0);
+  motors_init(0);
 
 }
 
@@ -457,20 +455,20 @@ static inline void main_event_task(void)
       can_data.status = ESC32_STATUS_STARTING;
       break;
 
-    case ESC32_STATUS_STARTING:
-      // esc32_can_start(ESC32_CAN_TT_GROUP, 1);
-      esc32_can_command_setpoint16(1, (uint8_t *) cmds);
-      can_data.status = ESC32_STATUS_RUNNING;
-      break;
+    // case ESC32_STATUS_STARTING:
+    //   // esc32_can_start(ESC32_CAN_TT_GROUP, 1);
+    //   esc32_can_command_setpoint16(1, (uint8_t *) cmds);
+    //   can_data.status = ESC32_STATUS_RUNNING;
+    //   break;
 
-    case ESC32_STATUS_RUNNING:
-      esc32_can_command_setpoint16(1, (uint8_t *) cmds);
+    // case ESC32_STATUS_RUNNING:
+    //   esc32_can_command_setpoint16(1, (uint8_t *) cmds);
 
-      cmds[0] = cmds[0]+100;
-      cmds[1] = cmds[1]+100;
-      cmds[2] = cmds[2]+100;
-      cmds[3] = cmds[3]+100;
-      break;
+    //   cmds[0] = cmds[0]+100;
+    //   cmds[1] = cmds[1]+100;
+    //   cmds[2] = cmds[2]+100;
+    //   cmds[3] = cmds[3]+100;
+    //   break;
 
     default :
       break;

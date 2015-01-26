@@ -38,10 +38,10 @@ endif
 #
 # default LED configuration
 #
-RADIO_CONTROL_LED  ?= 4
+RADIO_CONTROL_LED  ?= none
 BARO_LED           ?= none
 AHRS_ALIGNER_LED   ?= 2
-GPS_LED            ?= 3
+GPS_LED            ?= none
 SYS_TIME_LED       ?= 1
 
 
