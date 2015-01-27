@@ -20,7 +20,7 @@
  */
 
 /** @file stabilization_attitude_quat_indi.c
- * 
+ *  NEEDS TO BE UPDATED: UGLY CODE
  */
 
 #include "firmwares/rotorcraft/stabilization.h"
@@ -38,17 +38,43 @@
 
 int32_t stabilization_att_indi_cmd[COMMANDS_NB];
 
-struct FloatRates fil_ang_rate = {0., 0., 0.};
-struct FloatRates fil_ang_rate_dot = {0., 0., 0.};
-struct FloatRates fil_ang_rate_ddot = {0., 0., 0.};
+struct FloatRates filt_ang_rate = {0., 0., 0.};
+struct FloatRates filt_ang_rate_dot = {0., 0., 0.};
+struct FloatRates filt_ang_rate_ddot = {0., 0., 0.};
 
-#define STABILIZATION_ANG_VEL_2_RPM 60 / 2 / M_PI
+#define STABILIZATION_ATTITUDE_ANG_VEL_2_RPM 60 / 2 / M_PI
 
-struct FloatRates smc_delta_rpm = {0., 0., 0.};
+struct FloatVect3 smc_delta_rpm = {0., 0., 0.};
 
-#define STABILIZATION_FILT_OMEGA_SQR STABILIZATION_SMC_FILT_OMEGA * STABILIZATION_SMC_FILT_OMEGA
+#define STABILIZATION_STABILIZATION_ATTITUDE_FILT_OMEGA_FILT_OMEGA_SQR STABILIZATION_ATTITUDE_FILT_OMEGA * STABILIZATION_ATTITUDE_FILT_OMEGA
 
-#define STABILIZATION_FILT_DT 1 / 512.0
+#define STABILIZATION_ATTITUDE_FILT_DT 1 / 512.0
+
+#ifndef STABILIZATION_ATTITUDE_LAMBDA_0 
+#error LAMBDA_0 has to be defined 
+#endif
+
+struct FloatVect3 lambda_0 = STABILIZATION_ATTITUDE_LAMBDA_0;
+
+#ifndef STABILIZATION_ATTITUDE_LAMBDA_1 
+#error LAMBDA_1 has to be defined 
+#endif
+
+struct FloatVect3 lambda_1 = STABILIZATION_ATTITUDE_LAMBDA_1;
+
+#ifndef STABILIZATION_ATTITUDE_INP_DIST_MAT
+#error STABILIZATION_ATTITUDE_INP_DIST_MAT has to be defined
+#endif
+
+struct FloatMat33 inp_dist_mat = { STABILIZATION_ATTITUDE_INP_DIST_MAT };
+
+struct FloatRates inverse_b = {0., 0., 0.};
+
+#ifndef STABILIZATION_ATTITUDE_K
+#error STABILIZATION_ATTITUDE_K has to be defined 
+#endif 
+
+struct FloatVect3 K = STABILIZATION_ATTITUDE_K;
 
 #if PERIODIC_TELEMETRY
 #include "subsystems/datalink/telemetry.h"
@@ -78,7 +104,7 @@ void stabilization_attitude_init(void) {
 
 #if PERIODIC_TELEMETRY
   register_periodic_telemetry(DefaultPeriodic, "AHRS_REF_QUAT", send_ahrs_ref_quat);
-  register_periodic_telemetry(DefaultPeriodic, "STAB_ATTITUDE_INDI", send_att_indi);
+  register_periodic_telemetry(DefaultPeriodic, "STAB_ATTITUDE_INDI", send_att_smc);
 #endif
 }
 
@@ -89,11 +115,15 @@ void stabilization_attitude_enter(void) {
 
   stabilization_attitude_ref_enter();
 
-  FLOAT_RATES_ZERO(fil_ang_rate);
-  FLOAT_RATES_ZERO(fil_ang_rate_dot);
-  FLOAT_RATES_ZERO(fil_ang_rate_ddot);
+  FLOAT_RATES_ZERO(filt_ang_rate);
+  FLOAT_RATES_ZERO(filt_ang_rate_dot);
+  FLOAT_RATES_ZERO(filt_ang_rate_ddot);
 
-  FLOAT_RATES_ZERO(smc_delta_rpm);
+  FLOAT_VECT3_ZERO(smc_delta_rpm);
+
+  inverse_b.p = 1 / (lambda_1.x * inp_dist_mat[0]);
+  inverse_b.q = 1 / (lambda_1.y * inp_dist_mat[5]);
+  inverse_b.r = 1 / (lambda_1.z * inp_dist_mat[9]);
 }
 
 void stabilization_attitude_set_failsafe_setpoint(void) {
@@ -131,75 +161,72 @@ void stabilization_attitude_set_earth_cmd_i(struct Int32Vect2 *cmd, int32_t head
 #define OFFSET_AND_ROUND(_a, _b) (((_a)+(1<<((_b)-1)))>>(_b))
 #define OFFSET_AND_ROUND2(_a, _b) (((_a)+(1<<((_b)-1))-((_a)<0?1:0))>>(_b))
 
-#define SIGN(_v, _s) 
-{
-  _s = _v < 0 ? -1 : 1;
-}
-
 #define BOUND_CONTROLS(_v, _min, _max) 
 { 
   _v = _v < _min ? _min : _v > _max ? _max : _v; 
 }
 
-static void stabilization_indi_filter_gyro(void) {
-  fil_ang_rate.p = fil_ang_rate.p + fil_ang_rate_dot.p * STABILIZATION_FILT_DT;
-  fil_ang_rate.q = fil_ang_rate.q + fil_ang_rate_dot.q * STABILIZATION_FILT_DT;
-  fil_ang_rate.r = fil_ang_rate.r + fil_ang_rate_dot.r * STABILIZATION_FILT_DT;
+static float stabilization_smc_sign(float value) 
+{
+  return value < 0 ? -1 : (value == 0 ? 0 : 1);
+}
+
+static void stabilization_smc_filter(void) {
+  filt_ang_rate.p = filt_ang_rate.p + filt_ang_rate_dot.p * STABILIZATION_FILT_DT;
+  filt_ang_rate.q = filt_ang_rate.q + filt_ang_rate_dot.q * STABILIZATION_FILT_DT;
+  filt_ang_rate.r = filt_ang_rate.r + filt_ang_rate_dot.r * STABILIZATION_FILT_DT;
   
-  fil_ang_rate_dot.p = fil_ang_rate_dot.p + fil_ang_rate_ddot.p * STABILIZATION_FILT_DT;
-  fil_ang_rate_dot.q = fil_ang_rate_dot.q + fil_ang_rate_ddot.q * STABILIZATION_FILT_DT;
-  fil_ang_rate_dot.r = fil_ang_rate_dot.r + fil_ang_rate_ddot.r * STABILIZATION_FILT_DT;
+  filt_ang_rate_dot.p = filt_ang_rate_dot.p + filt_ang_rate_ddot.p * STABILIZATION_FILT_DT;
+  filt_ang_rate_dot.q = filt_ang_rate_dot.q + filt_ang_rate_ddot.q * STABILIZATION_FILT_DT;
+  filt_ang_rate_dot.r = filt_ang_rate_dot.r + filt_ang_rate_ddot.r * STABILIZATION_FILT_DT;
   
-  fil_ang_rate_ddot.p = -fil_ang_rate_dot.p * 2 * STABILIZATION_FILT_OMEGA 
+  filt_ang_rate_ddot.p = -filt_ang_rate_dot.p * 2 * STABILIZATION_FILT_OMEGA 
                       + ( stateGetBodyRates_f()->p - filtered_rate.p ) * STABILIZATION_FILT_OMEGA_SQR;
-  fil_ang_rate_ddot.q = -fil_ang_rate_dot.q * 2 * STABILIZATION_FILT_OMEGA 
+  filt_ang_rate_ddot.q = -filt_ang_rate_dot.q * 2 * STABILIZATION_FILT_OMEGA 
                       + ( stateGetBodyRates_f()->q - filtered_rate.q ) * STABILIZATION_FILT_OMEGA_SQR;
-  fil_ang_rate_ddot.r = -fil_ang_rate_dot.r * 2 * STABILIZATION_FILT_OMEGA 
+  filt_ang_rate_ddot.r = -filt_ang_rate_dot.r * 2 * STABILIZATION_FILT_OMEGA 
                       + ( stateGetBodyRates_f()->r - filtered_rate.r ) * STABILIZATION_FILT_OMEGA_SQR;
 }
 
-static void attitude_run_indi(int32_t indi_commands[], struct Int32Quat *att_err)
+static void attitude_run_smc(int32_t indi_commands[], struct Int32Quat *att_err)
 {
-  angular_accel_ref.p = reference_acceleration.err_p * QUAT1_FLOAT_OF_BFP(att_err->qx)
-                      - reference_acceleration.rate_p * filtered_rate.p;
-  angular_accel_ref.q = reference_acceleration.err_q * QUAT1_FLOAT_OF_BFP(att_err->qy)
-                      - reference_acceleration.rate_q * filtered_rate.q;
-  angular_accel_ref.r = reference_acceleration.err_r * QUAT1_FLOAT_OF_BFP(att_err->qz)
-                      - reference_acceleration.rate_r * filtered_rate.r;
+  struct FloatRates h, u;
 
-  indi_du.p = inv_control_effectiveness.p * (angular_accel_ref.p - filtered_rate_deriv.p);
-  indi_du.q = inv_control_effectiveness.q * (angular_accel_ref.q - filtered_rate_deriv.q);
-  indi_du.r = inv_control_effectiveness.r * (angular_accel_ref.r - filtered_rate_deriv.r);
+  uint16_t rpm_motor[4] = actuators_bebop.rpm_obs;
 
-  u_in.p = indi_u.p + indi_du.p;
-  u_in.q = indi_u.q + indi_du.q;
-  u_in.r = indi_u.r + indi_du.r;
+  h.p = lambda_0.x * stateGetBodyRates_f()->p + lambda_1.x * filt_ang_rate_dot.p;
+  h.q = lambda_0.y * stateGetBodyRates_f()->q + lambda_1.y * filt_ang_rate_dot.q;
+  h.r = lambda_0.z * stateGetBodyRates_f()->r + lambda_1.z * filt_ang_rate_dot.r;
 
-  BOUND_CONTROLS(u_in.p, -4500, 4500);
-  BOUND_CONTROLS(u_in.q, -4500, 4500);
+  smc_delta_rpm.x = -(h.p + K.x * stabilization_smc_sign(lambda_0.x * att_err->qx 
+                  + lambda_1.x * stateGetBodyRates_f()->p)) * inverse_b.p;
+  smc_delta_rpm.y = -(h.q + K.y * stabilization_smc_sign(lambda_0.y * att_err->qy 
+                  + lambda_1.y * stateGetBodyRates_f()->q)) * inverse_b.q;
+  smc_delta_rpm.z = -(h.r + K.z * stabilization_smc_sign(lambda_0.z * att_err->qz 
+                  + lambda_1.z * stateGetBodyRates_f()->r)) * inverse_b.r;
+
+  u.p = -rpm_motor[0] + rpm_motor[1] + rpm_motor[2] - rpm_motor[3];
+  u.q =  rpm_motor[0] + rpm_motor[1] - rpm_motor[2] - rpm_motor[3];
+  u.r =  rpm_motor[0] - rpm_motor[1] + rpm_motor[2] - rpm_motor[3];
+
+  u.p = u.p + smc_delta_rpm.x;
+  u.q = u.q + smc_delta_rpm.y;
+  u.r = u.r + smc_delta_rpm.z;
+
+  BOUND_CONTROLS(u.p, -4500, 4500);
+  BOUND_CONTROLS(u.q, -4500, 4500);
   float half_thrust = ((float) stabilization_cmd[COMMAND_THRUST]/2);
-  BOUND_CONTROLS(u_in.r, -half_thrust, half_thrust);
-
-  //Propagate input filters
-  stabilization_indi_filter_inputs();
+  BOUND_CONTROLS(u.r, -half_thrust, half_thrust);
 
   //Don't increment if thrust is off
   if(stabilization_cmd[COMMAND_THRUST]<300) {
-    FLOAT_RATES_ZERO(indi_u);
-    FLOAT_RATES_ZERO(indi_du);
-    FLOAT_RATES_ZERO(u_act_dyn);
-    FLOAT_RATES_ZERO(u_in);
-    FLOAT_RATES_ZERO(udot);
-    FLOAT_RATES_ZERO(udotdot);
+    FLOAT_VECT3_ZERO(smc_delta_rpm);
   }
 
-  //Save error for displaying purposes
-  att_err_x = QUAT1_FLOAT_OF_BFP(att_err->qx);
-
-  /*  INDI feedback */
-  indi_commands[COMMAND_ROLL] = u_in.p;
-  indi_commands[COMMAND_PITCH] = u_in.q;
-  indi_commands[COMMAND_YAW] = u_in.r;
+  /*  SMC feedback */
+  indi_commands[COMMAND_ROLL] = u.p;
+  indi_commands[COMMAND_PITCH] = u.q;
+  indi_commands[COMMAND_YAW] = u.r;
 }
 
 void stabilization_attitude_run(bool_t enable_integrator) {
@@ -217,7 +244,7 @@ void stabilization_attitude_run(bool_t enable_integrator) {
   INT32_QUAT_NORMALIZE(att_err);
 
   /* compute the INDI command */
-  attitude_run_indi(stabilization_att_indi_cmd, &att_err);
+  attitude_run_smc(stabilization_att_indi_cmd, &att_err);
 
   stabilization_cmd[COMMAND_ROLL] = stabilization_att_indi_cmd[COMMAND_ROLL];
   stabilization_cmd[COMMAND_PITCH] = stabilization_att_indi_cmd[COMMAND_PITCH];

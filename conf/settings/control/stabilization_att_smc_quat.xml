@@ -1,0 +1,22 @@
+<!DOCTYPE settings SYSTEM "../settings.dtd">
+
+<settings>
+  <dl_settings>
+
+    <dl_settings NAME="indi">
+      <dl_setting var="lambda_0.x" min="0" step="1" max="100" module="stabilization/stabilization_attitude_quat_smc" shortname="l_0_x"/>
+      <dl_setting var="lambda_0.y" min="0" step="1" max="100" module="stabilization/stabilization_attitude_quat_smc" shortname="l_0_y"/>
+      <dl_setting var="lambda_0.z" min="0" step="1" max="100" module="stabilization/stabilization_attitude_quat_smc" shortname="l_0_z"/>
+      />
+      <dl_setting var="lambda_1.x" min="0" step="1" max="100" module="stabilization/stabilization_attitude_quat_smc" shortname="l_1_x"/>
+      <dl_setting var="lambda_1.y" min="0" step="1" max="100" module="stabilization/stabilization_attitude_quat_smc" shortname="l_1_y"/>
+      <dl_setting var="lambda_1.z" min="0" step="1" max="100" module="stabilization/stabilization_attitude_quat_smc" shortname="l_1_z"/>
+      />
+
+      <dl_setting var="K.x" min="0" step="1" max="500" module="stabilization/stabilization_attitude_quat_smc" shortname="K_x"/>
+      <dl_setting var="K_y" min="0" step="1" max="100" module="stabilization/stabilization_attitude_quat_smc" shortname="K_y"/>
+      <dl_setting var="K_z" min="0" step="1" max="500" module="stabilization/stabilization_attitude_quat_smc" shortname="K_z"/>
+    </dl_settings>
+
+  </dl_settings>
+</settings>

@@ -19,8 +19,8 @@
  * Boston, MA 02111-1307, USA.
  */
 
-#ifndef STABILIZATION_ATTITUDE_QUAT_INDI_H
-#define STABILIZATION_ATTITUDE_QUAT_INDI_H
+#ifndef STABILIZATION_ATTITUDE_QUAT_SMC_H
+#define STABILIZATION_ATTITUDE_QUAT_SMC_H
 
 #include "firmwares/rotorcraft/stabilization/stabilization_attitude_common_int.h"
 #include "firmwares/rotorcraft/stabilization/stabilization_attitude_ref_quat_int.h"
@@ -35,21 +35,16 @@ struct ReferenceSystem {
   float rate_r;
 };
 
-extern struct FloatRates inv_control_effectiveness;
 extern struct ReferenceSystem reference_acceleration;
 
-extern struct FloatRates filtered_rate;
-extern struct FloatRates filtered_rate_deriv;
-extern struct FloatRates filtered_rate_2deriv;
-extern struct FloatRates angular_accel_ref;
-extern struct FloatRates indi_u;
-extern struct FloatRates indi_du;
-extern struct FloatRates u_act_dyn;
-extern struct FloatRates u_in;
-extern struct FloatRates udot;
-extern struct FloatRates udotdot;
+extern struct FloatRates filt_ang_rate;
+extern struct FloatRates filt_ang_rate_dot;
+extern struct FloatRates filt_ang_rate_ddot;
 
-void stabilization_indi_filter_gyro(void);
-void stabilization_indi_filter_inputs(void);
+extern struct FloatVect3 smc_delta_rpm;
 
-#endif /* STABILIZATION_ATTITUDE_QUAT_INT_H */
+extern struct FloatVect3 lambda_0;
+extern struct FloatVect3 lambda_1;
+extern struct FloatVect3 K;
+
+#endif /* STABILIZATION_ATTITUDE_QUAT_SMC_H */

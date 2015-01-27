@@ -20,7 +20,7 @@
     <subsystem name="actuators" type="bebop"/>
     <subsystem name="imu" type="bebop"/>
     <subsystem name="gps" type="furuno"/>
-    <subsystem name="stabilization" type="int_quat"/>
+    <subsystem name="stabilization" type="indi"/>
     <subsystem name="ahrs" type="int_cmpl_quat"/>
     <subsystem name="ins" type="extended"/>
   </firmware>
@@ -131,7 +131,16 @@
     <define name="DDGAIN_R" value="300"/>
   </section>
 
-  <section name="STABILIZATION_ATTITUDE" prefix="STABILIZATION_ATTITUDE_">
+   <section name="STABILIZATION_ATTITUDE" prefix="STABILIZATION_ATTITUDE_">
+    
+    <!-- SMC --> 
+    <define name="LAMBDA_0" value="{ 1, 1, 1 }"/>
+    <define name="LAMBDA_1" value="{ 2, 2, 2 }"/>
+    <define name="K" value="{ 1, 1, 1 }"/>
+
+    <!-- Model parameters -->
+    <define name="INP_DIST_MAT" value="{1, 0, 0, 0, 1, 0, 0, 0, 1}"/>
+
     <!-- setpoints -->
     <define name="SP_MAX_PHI" value="45" unit="deg"/>
     <define name="SP_MAX_THETA" value="45" unit="deg"/>
@@ -157,7 +166,7 @@
     <define name="REF_MAX_RDOT" value="RadOfDeg(8000.)"/>
 
     <!-- feedback -->
-    <define name="PHI_PGAIN" value="650"/>
+<!--     <define name="PHI_PGAIN" value="650"/>
     <define name="PHI_DGAIN" value="300"/>
     <define name="PHI_IGAIN" value="0"/>
 
@@ -167,12 +176,12 @@
 
     <define name="PSI_PGAIN" value="4000"/>
     <define name="PSI_DGAIN" value="350"/>
-    <define name="PSI_IGAIN" value="0"/>
+    <define name="PSI_IGAIN" value="0"/> -->
 
     <!-- feedforward -->
-    <define name="PHI_DDGAIN" value="0"/>
+<!--     <define name="PHI_DDGAIN" value="0"/>
     <define name="THETA_DDGAIN" value="0"/>
-    <define name="PSI_DDGAIN" value="0"/>
+    <define name="PSI_DDGAIN" value="0"/>  -->
   </section>
 
   <section name="GUIDANCE_V" prefix="GUIDANCE_V_">
