@@ -42,10 +42,10 @@ extern struct FloatRates filt_ang_rate_dot;
 extern struct FloatRates filt_ang_rate_ddot;
 
 extern uint16_t rpm_motor[4]; 
-extern struct FloatVect3 smc_delta_rpm;
+extern struct FloatRates sliding_mode_control_increment;
 
-extern struct FloatVect3 lambda_0;
-extern struct FloatVect3 lambda_1;
-extern struct FloatVect3 K;
+extern struct Int8Vect3 stabilization_attitude_lambda_0;
+extern struct Int8Vect3 stabilization_attitude_lambda_1;
+extern struct Int8Vect3 stabilization_attitude_k;
 
 #endif /* STABILIZATION_ATTITUDE_QUAT_SMC_H */

@@ -46,7 +46,7 @@ struct FloatRates filt_ang_rate_ddot = {0., 0., 0.};
 
 uint16_t rpm_motor[4] = {0, 0, 0, 0};
 
-struct FloatVect3 smc_delta_rpm = {0., 0., 0.};
+struct FloatRates sliding_mode_control_increment = {0., 0., 0.};
 
 #define STABILIZATION_ATTITUDE_FILT_OMEGA_SQR ( STABILIZATION_ATTITUDE_FILT_OMEGA * STABILIZATION_ATTITUDE_FILT_OMEGA )
 
@@ -56,13 +56,13 @@ struct FloatVect3 smc_delta_rpm = {0., 0., 0.};
 #error LAMBDA_0 has to be defined 
 #endif
 
-struct FloatVect3 stabilization_attitude_lambda_0 = STABILIZATION_ATTITUDE_LAMBDA_0;
+struct Int8Vect3 stabilization_attitude_lambda_0 = STABILIZATION_ATTITUDE_LAMBDA_0;
 
 #ifndef STABILIZATION_ATTITUDE_LAMBDA_1 
 #error LAMBDA_1 has to be defined 
 #endif
 
-struct FloatVect3 stabilization_attitude_lambda_1 = STABILIZATION_ATTITUDE_LAMBDA_1;
+struct Int8Vect3 stabilization_attitude_lambda_1 = STABILIZATION_ATTITUDE_LAMBDA_1;
 
 #ifndef STABILIZATION_ATTITUDE_INP_DIST_MAT
 #error STABILIZATION_ATTITUDE_INP_DIST_MAT has to be defined
@@ -70,21 +70,25 @@ struct FloatVect3 stabilization_attitude_lambda_1 = STABILIZATION_ATTITUDE_LAMBD
 
 struct FloatMat33 inp_dist_mat = { STABILIZATION_ATTITUDE_INP_DIST_MAT };
 
+struct FloatRates h = {0., 0., 0.};
+
 struct FloatRates inverse_b = {0., 0., 0.};
 
 #ifndef STABILIZATION_ATTITUDE_K
 #error STABILIZATION_ATTITUDE_K has to be defined 
 #endif 
 
-struct FloatVect3 K = STABILIZATION_ATTITUDE_K;
+struct Int8Vect3 stabilization_attitude_k = STABILIZATION_ATTITUDE_K;
+
+struct Int8Vect3 stabilization_attitude_sign;
 
 #if PERIODIC_TELEMETRY
 #include "subsystems/datalink/telemetry.h"
 
-static void send_ahrs_ref_quat(void) 
+static void send_ahrs_ref_quat(struct transport_tx *trans, struct link_device *dev) 
 {
   struct Int32Quat* quat = stateGetNedToBodyQuat_i();
-  DOWNLINK_SEND_AHRS_REF_QUAT(DefaultChannel, DefaultDevice,
+  pprz_msg_send_AHRS_REF_QUAT(trans, dev, AC_ID,
       &stab_att_ref_quat.qi,
       &stab_att_ref_quat.qx,
       &stab_att_ref_quat.qy,
@@ -95,8 +99,18 @@ static void send_ahrs_ref_quat(void)
       &(quat->qz));
 }
 
-static void send_att_smc(void) 
+static void send_att_sliding_mode_control(struct transport_tx *trans, struct link_device *dev) 
 {
+  pprz_msg_send_SMC(trans, dev, AC_ID,
+      &h.p,
+      &h.q,
+      &h.r,
+      &stabilization_attitude_sign.x,
+      &stabilization_attitude_sign.y,
+      &stabilization_attitude_sign.z,
+      &sliding_mode_control_increment.p,
+      &sliding_mode_control_increment.q,
+      &sliding_mode_control_increment.r);
 }
 
 #endif
@@ -107,6 +121,7 @@ void stabilization_attitude_init(void) {
 
 #if PERIODIC_TELEMETRY
   register_periodic_telemetry(DefaultPeriodic, "AHRS_REF_QUAT", send_ahrs_ref_quat);
+  register_periodic_telemetry(DefaultPeriodic, "SMC", send_att_sliding_mode_control);
 #endif
 }
 
@@ -121,7 +136,11 @@ void stabilization_attitude_enter(void) {
   FLOAT_RATES_ZERO(filt_ang_rate_dot);
   FLOAT_RATES_ZERO(filt_ang_rate_ddot);
 
-  FLOAT_VECT3_ZERO(smc_delta_rpm);
+  FLOAT_RATES_ZERO(sliding_mode_control_increment);
+
+  FLOAT_RATES_ZERO(h);
+
+  INT_VECT3_ZERO(stabilization_attitude_sign);
 
   inverse_b.p = 1 / (stabilization_attitude_lambda_1.x * inp_dist_mat.m[0]);
   inverse_b.q = 1 / (stabilization_attitude_lambda_1.y * inp_dist_mat.m[4]);
@@ -168,7 +187,7 @@ void stabilization_attitude_set_earth_cmd_i(struct Int32Vect2 *cmd, int32_t head
   _v = _v < _min ? _min : _v > _max ? _max : _v; \
 }                                                \
 
-static float stabilization_smc_sign(float value) 
+static int stabilization_smc_sign(float value) 
 {
   return value < 0 ? -1 : ( value == 0 ? 0 : 1 );
 }
@@ -190,30 +209,41 @@ static void stabilization_rate_filter(void) {
                       + ( stateGetBodyRates_f()->r - filt_ang_rate.r ) * STABILIZATION_ATTITUDE_FILT_OMEGA_SQR;
 }
 
+struct FloatRates u;
+
 static void attitude_run_smc(int32_t indi_commands[], struct Int32Quat *att_err)
 {
-  struct FloatRates h, u;
 
   memcpy(rpm_motor, actuators_bebop.rpm_obs, 4*sizeof(uint16_t));
 
-  h.p = stabilization_attitude_lambda_0.x * stateGetBodyRates_f()->p + stabilization_attitude_lambda_1.x * filt_ang_rate_dot.p;
-  h.q = stabilization_attitude_lambda_0.y * stateGetBodyRates_f()->q + stabilization_attitude_lambda_1.y * filt_ang_rate_dot.q;
-  h.r = stabilization_attitude_lambda_0.z * stateGetBodyRates_f()->r + stabilization_attitude_lambda_1.z * filt_ang_rate_dot.r;
+  h.p = (float)stabilization_attitude_lambda_0.x * stateGetBodyRates_f()->p 
+      + (float)stabilization_attitude_lambda_1.x * filt_ang_rate_dot.p;
+  h.q = (float)stabilization_attitude_lambda_0.y * stateGetBodyRates_f()->q 
+      + (float)stabilization_attitude_lambda_1.y * filt_ang_rate_dot.q;
+  h.r = (float)stabilization_attitude_lambda_0.z * stateGetBodyRates_f()->r 
+      + (float)stabilization_attitude_lambda_1.z * filt_ang_rate_dot.r;
 
-  smc_delta_rpm.x = -(h.p + K.x * stabilization_smc_sign(stabilization_attitude_lambda_0.x * att_err->qx 
-                  + stabilization_attitude_lambda_1.x * stateGetBodyRates_f()->p)) * inverse_b.p;
-  smc_delta_rpm.y = -(h.q + K.y * stabilization_smc_sign(stabilization_attitude_lambda_0.y * att_err->qy 
-                  + stabilization_attitude_lambda_1.y * stateGetBodyRates_f()->q)) * inverse_b.q;
-  smc_delta_rpm.z = -(h.r + K.z * stabilization_smc_sign(stabilization_attitude_lambda_0.z * att_err->qz 
-                  + stabilization_attitude_lambda_1.z * stateGetBodyRates_f()->r)) * inverse_b.r;
+  stabilization_attitude_sign.x = stabilization_smc_sign(stabilization_attitude_lambda_0.x * att_err->qx 
+                                + stabilization_attitude_lambda_1.x * stateGetBodyRates_f()->p);
+  stabilization_attitude_sign.y = stabilization_smc_sign(stabilization_attitude_lambda_0.y * att_err->qy 
+                                + stabilization_attitude_lambda_1.y * stateGetBodyRates_f()->q);
+  stabilization_attitude_sign.z = stabilization_smc_sign(stabilization_attitude_lambda_0.z * att_err->qz 
+                                + stabilization_attitude_lambda_1.z * stateGetBodyRates_f()->r);
 
-  u.p = -rpm_motor[0] + rpm_motor[1] + rpm_motor[2] - rpm_motor[3];
-  u.q =  rpm_motor[0] + rpm_motor[1] - rpm_motor[2] - rpm_motor[3];
-  u.r =  rpm_motor[0] - rpm_motor[1] + rpm_motor[2] - rpm_motor[3];
+  sliding_mode_control_increment.p = -(h.p + (float)stabilization_attitude_k.x 
+                                   * (float)stabilization_attitude_sign.x) * inverse_b.p;
+  sliding_mode_control_increment.q = -(h.q + (float)stabilization_attitude_k.y
+                                   * (float)stabilization_attitude_sign.y) * inverse_b.q;
+  sliding_mode_control_increment.r = -(h.r + (float)stabilization_attitude_k.z 
+                                   * (float)stabilization_attitude_sign.z) * inverse_b.r;
 
-  u.p = u.p + smc_delta_rpm.x;
-  u.q = u.q + smc_delta_rpm.y;
-  u.r = u.r + smc_delta_rpm.z;
+  // u.p = -rpm_motor[0] + rpm_motor[1] + rpm_motor[2] - rpm_motor[3];
+  // u.q =  rpm_motor[0] + rpm_motor[1] - rpm_motor[2] - rpm_motor[3];
+  // u.r =  rpm_motor[0] - rpm_motor[1] + rpm_motor[2] - rpm_motor[3];
+
+  u.p = u.p + sliding_mode_control_increment.p;
+  u.q = u.q + sliding_mode_control_increment.q;
+  u.r = u.r + sliding_mode_control_increment.r;
 
   BOUND_CONTROLS(u.p, -4500, 4500);
   BOUND_CONTROLS(u.q, -4500, 4500);
@@ -222,7 +252,7 @@ static void attitude_run_smc(int32_t indi_commands[], struct Int32Quat *att_err)
 
   //Don't increment if thrust is off
   if(stabilization_cmd[COMMAND_THRUST]<300) {
-    FLOAT_VECT3_ZERO(smc_delta_rpm);
+    FLOAT_RATES_ZERO(sliding_mode_control_increment);
   }
 
   /*  SMC feedback */

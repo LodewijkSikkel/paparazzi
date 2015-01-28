@@ -40,10 +40,10 @@
   </commands>
 
   <servos driver="Default">
-    <servo name="TOP_RIGHT" no="0" min="3000" neutral="3000" max="12000"/>
-    <servo name="TOP_LEFT" no="1" min="3000" neutral="3000" max="12000"/>
-    <servo name="BOTTOM_LEFT" no="2" min="3000" neutral="3000" max="12000"/>
-    <servo name="BOTTOM_RIGHT" no="3" min="3000" neutral="3000" max="12000"/>
+    <servo name="TOP_RIGHT" no="0" min="3000" neutral="3000" max="5000"/>
+    <servo name="TOP_LEFT" no="1" min="3000" neutral="3000" max="5000"/>
+    <servo name="BOTTOM_LEFT" no="2" min="3000" neutral="3000" max="5000"/>
+    <servo name="BOTTOM_RIGHT" no="3" min="3000" neutral="3000" max="5000"/>
   </servos>
 
   <section name="MIXING" prefix="MOTOR_MIXING_">
@@ -214,7 +214,7 @@
   <section name="AUTOPILOT">
     <define name="MODE_STARTUP" value="AP_MODE_NAV"/>
     <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/>
-    <define name="MODE_AUTO1" value="AP_MODE_ATTITUDE_Z_HOLD"/>
+    <define name="MODE_AUTO1" value="AP_MODE_ATTITUDE_DIRECT"/>
     <define name="MODE_AUTO2" value="AP_MODE_NAV"/>
   </section>
 

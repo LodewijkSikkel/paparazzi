@@ -185,6 +185,18 @@
   </message>
 
   <!-- ID 23 is free -->
+  <message name="SMC" id="23">
+    <field name="h_p" type="float"/>
+    <field name="h_q" type="float"/>
+    <field name="h_r" type="float"/>
+    <field name="s_x" type="int8"/>
+    <field name="s_y" type="int8"/>
+    <field name="s_z" type="int8"/>
+    <field name="du_x" type="float"/>
+    <field name="du_y" type="float"/>
+    <field name="du_z" type="float"/>
+  </message>
+
   <!-- ID 24 is free -->
 
   <message name="SVINFO" id="25">
