@@ -41,6 +41,7 @@ extern struct FloatRates filt_ang_rate;
 extern struct FloatRates filt_ang_rate_dot;
 extern struct FloatRates filt_ang_rate_ddot;
 
+extern uint16_t rpm_motor[4]; 
 extern struct FloatVect3 smc_delta_rpm;
 
 extern struct FloatVect3 lambda_0;

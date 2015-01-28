@@ -23,7 +23,7 @@
  *  NEEDS TO BE UPDATED: UGLY CODE
  */
 
-#include "firmwares/rotorcraft/stabilization.h"
+#include "firmwares/rotorcraft/stabilization/stabilization_attitude.h"
 #include "firmwares/rotorcraft/stabilization/stabilization_attitude_rc_setpoint.h"
 #include "firmwares/rotorcraft/stabilization/stabilization_attitude_quat_transformations.h"
 
@@ -43,6 +43,8 @@ struct FloatRates filt_ang_rate_dot = {0., 0., 0.};
 struct FloatRates filt_ang_rate_ddot = {0., 0., 0.};
 
 #define STABILIZATION_ATTITUDE_ANG_VEL_2_RPM ( 60 / 2 / M_PI )
+
+uint16_t rpm_motor[4] = {0, 0, 0, 0};
 
 struct FloatVect3 smc_delta_rpm = {0., 0., 0.};
 
@@ -79,7 +81,8 @@ struct FloatVect3 K = STABILIZATION_ATTITUDE_K;
 #if PERIODIC_TELEMETRY
 #include "subsystems/datalink/telemetry.h"
 
-static void send_ahrs_ref_quat(void) {
+static void send_ahrs_ref_quat(void) 
+{
   struct Int32Quat* quat = stateGetNedToBodyQuat_i();
   DOWNLINK_SEND_AHRS_REF_QUAT(DefaultChannel, DefaultDevice,
       &stab_att_ref_quat.qi,
@@ -104,7 +107,6 @@ void stabilization_attitude_init(void) {
 
 #if PERIODIC_TELEMETRY
   register_periodic_telemetry(DefaultPeriodic, "AHRS_REF_QUAT", send_ahrs_ref_quat);
-  register_periodic_telemetry(DefaultPeriodic, "STAB_ATTITUDE_INDI", send_att_smc);
 #endif
 }
 
@@ -122,8 +124,8 @@ void stabilization_attitude_enter(void) {
   FLOAT_VECT3_ZERO(smc_delta_rpm);
 
   inverse_b.p = 1 / (stabilization_attitude_lambda_1.x * inp_dist_mat.m[0]);
-  inverse_b.q = 1 / (stabilization_attitude_lambda_1.y * inp_dist_mat.m[5]);
-  inverse_b.r = 1 / (stabilization_attitude_lambda_1.z * inp_dist_mat.m[9]);
+  inverse_b.q = 1 / (stabilization_attitude_lambda_1.y * inp_dist_mat.m[4]);
+  inverse_b.r = 1 / (stabilization_attitude_lambda_1.z * inp_dist_mat.m[8]);
 }
 
 void stabilization_attitude_set_failsafe_setpoint(void) {
@@ -171,7 +173,7 @@ static float stabilization_smc_sign(float value)
   return value < 0 ? -1 : ( value == 0 ? 0 : 1 );
 }
 
-static void stabilization_smc_filter(void) {
+static void stabilization_rate_filter(void) {
   filt_ang_rate.p = filt_ang_rate.p + filt_ang_rate_dot.p * STABILIZATION_ATTITUDE_FILT_DT;
   filt_ang_rate.q = filt_ang_rate.q + filt_ang_rate_dot.q * STABILIZATION_ATTITUDE_FILT_DT;
   filt_ang_rate.r = filt_ang_rate.r + filt_ang_rate_dot.r * STABILIZATION_ATTITUDE_FILT_DT;
@@ -192,7 +194,7 @@ static void attitude_run_smc(int32_t indi_commands[], struct Int32Quat *att_err)
 {
   struct FloatRates h, u;
 
-  uint16_t rpm_motor[4] = actuators_bebop.rpm_obs;
+  memcpy(rpm_motor, actuators_bebop.rpm_obs, 4*sizeof(uint16_t));
 
   h.p = stabilization_attitude_lambda_0.x * stateGetBodyRates_f()->p + stabilization_attitude_lambda_1.x * filt_ang_rate_dot.p;
   h.q = stabilization_attitude_lambda_0.y * stateGetBodyRates_f()->q + stabilization_attitude_lambda_1.y * filt_ang_rate_dot.q;
@@ -232,7 +234,7 @@ static void attitude_run_smc(int32_t indi_commands[], struct Int32Quat *att_err)
 void stabilization_attitude_run(bool_t enable_integrator) {
 
   /* Propagate the second order filter on the gyroscopes */
-  stabilization_indi_filter_gyro();
+  stabilization_rate_filter();
 
   /* attitude error */
   struct Int32Quat att_err;
@@ -256,12 +258,12 @@ void stabilization_attitude_run(bool_t enable_integrator) {
   BoundAbs(stabilization_cmd[COMMAND_YAW], MAX_PPRZ);
 }
 
-void stabilization_attitude_read_rc(bool_t in_flight) {
+void stabilization_attitude_read_rc(bool_t in_flight, bool_t in_carefree, bool_t coordinated_turn) {
   struct FloatQuat q_sp;
 #if USE_EARTH_BOUND_RC_SETPOINT
-  stabilization_attitude_read_rc_setpoint_quat_earth_bound_f(&q_sp, in_flight);
+  stabilization_attitude_read_rc_setpoint_quat_earth_bound_f(&q_sp, in_flight, in_carefree, coordinated_turn);
 #else
-  stabilization_attitude_read_rc_setpoint_quat_f(&q_sp, in_flight);
+  stabilization_attitude_read_rc_setpoint_quat_f(&q_sp, in_flight, in_carefree, coordinated_turn);
 #endif
   QUAT_BFP_OF_REAL(stab_att_sp_quat, q_sp);
 }
