@@ -20,7 +20,7 @@
     <subsystem name="actuators" type="bebop"/>
     <subsystem name="imu" type="bebop"/>
     <subsystem name="gps" type="furuno"/>
-    <subsystem name="stabilization" type="indi"/>
+    <subsystem name="stabilization" type="smc"/>
     <subsystem name="ahrs" type="int_cmpl_quat"/>
     <subsystem name="ins" type="extended"/>
   </firmware>
@@ -133,6 +133,9 @@
 
    <section name="STABILIZATION_ATTITUDE" prefix="STABILIZATION_ATTITUDE_">
     
+    <!-- Filter -->
+    <define name="FILT_OMEGA" value="90" unit="rad/s"/>
+
     <!-- SMC --> 
     <define name="LAMBDA_0" value="{ 1, 1, 1 }"/>
     <define name="LAMBDA_1" value="{ 2, 2, 2 }"/>
