@@ -189,12 +189,18 @@
     <field name="h_p" type="float"/>
     <field name="h_q" type="float"/>
     <field name="h_r" type="float"/>
-    <field name="s_x" type="int8"/>
-    <field name="s_y" type="int8"/>
-    <field name="s_z" type="int8"/>
-    <field name="du_x" type="float"/>
-    <field name="du_y" type="float"/>
-    <field name="du_z" type="float"/>
+    <field name="s_func_p" type="float"/>
+    <field name="s_func_q" type="float"/>
+    <field name="s_func_r" type="float"/>
+    <field name="s_contr_incr_p" type="float"/>
+    <field name="s_contr_incr_q" type="float"/>
+    <field name="s_contr_incr_r" type="float"/>
+    <field name="att_quat_qx" type="int32"/>
+    <field name="att_quat_qy" type="int32"/>
+    <field name="att_quat_qz" type="int32"/>
+    <field name="stab_att_sp_quat_qx" type="int32"/>
+    <field name="stab_att_sp_quat_qy" type="int32"/>
+    <field name="stab_att_sp_quat_qz" type="int32"/>
   </message>
 
   <!-- ID 24 is free -->

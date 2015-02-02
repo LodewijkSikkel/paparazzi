@@ -40,10 +40,10 @@
   </commands>
 
   <servos driver="Default">
-    <servo name="TOP_RIGHT" no="0" min="3000" neutral="3000" max="5000"/>
-    <servo name="TOP_LEFT" no="1" min="3000" neutral="3000" max="5000"/>
-    <servo name="BOTTOM_LEFT" no="2" min="3000" neutral="3000" max="5000"/>
-    <servo name="BOTTOM_RIGHT" no="3" min="3000" neutral="3000" max="5000"/>
+    <servo name="TOP_RIGHT" no="0" min="3000" neutral="3000" max="12000"/>
+    <servo name="TOP_LEFT" no="1" min="3000" neutral="3000" max="12000"/>
+    <servo name="BOTTOM_LEFT" no="2" min="3000" neutral="3000" max="12000"/>
+    <servo name="BOTTOM_RIGHT" no="3" min="3000" neutral="3000" max="12000"/>
   </servos>
 
   <section name="MIXING" prefix="MOTOR_MIXING_">
@@ -134,15 +134,20 @@
    <section name="STABILIZATION_ATTITUDE" prefix="STABILIZATION_ATTITUDE_">
     
     <!-- Filter -->
-    <define name="FILT_OMEGA" value="90" unit="rad/s"/>
+    <define name="FILT_ZETA" value=".37"/>
+    <define name="FILT_OMEGA" value="50." unit="rad/s"/>
+    <define name="FILT_ZETA_R" value=".5"/>
+    <define name="FILT_OMEGA_R" value="20." unit="rad/s"/>
 
     <!-- SMC --> 
-    <define name="LAMBDA_0" value="{ 1, 1, 1 }"/>
-    <define name="LAMBDA_1" value="{ 2, 2, 2 }"/>
-    <define name="K" value="{ 1, 1, 1 }"/>
+    <define name="DEADBAND_TAU" value="0.05"/>
+    <define name="LAMBDA_0" value="{ 5., 5., 1. }"/>
+    <define name="K" value="{ 10., 10., 5. }"/>
 
     <!-- Model parameters -->
-    <define name="INP_DIST_MAT" value="{1, 0, 0, 0, 1, 0, 0, 0, 1}"/>
+    <define name="INV_INPUT_DISTR_P" value="12."/>
+    <define name="INV_INPUT_DISTR_Q" value="20."/>
+    <define name="INV_INPUT_DISTR_R" value="120."/>
 
     <!-- setpoints -->
     <define name="SP_MAX_PHI" value="45" unit="deg"/>
@@ -169,7 +174,7 @@
     <define name="REF_MAX_RDOT" value="RadOfDeg(8000.)"/>
 
     <!-- feedback -->
-<!--     <define name="PHI_PGAIN" value="650"/>
+    <define name="PHI_PGAIN" value="650"/>
     <define name="PHI_DGAIN" value="300"/>
     <define name="PHI_IGAIN" value="0"/>
 
@@ -179,12 +184,12 @@
 
     <define name="PSI_PGAIN" value="4000"/>
     <define name="PSI_DGAIN" value="350"/>
-    <define name="PSI_IGAIN" value="0"/> -->
+    <define name="PSI_IGAIN" value="0"/>
 
     <!-- feedforward -->
-<!--     <define name="PHI_DDGAIN" value="0"/>
+    <define name="PHI_DDGAIN" value="0"/>
     <define name="THETA_DDGAIN" value="0"/>
-    <define name="PSI_DDGAIN" value="0"/>  -->
+    <define name="PSI_DDGAIN" value="0"/> 
   </section>
 
   <section name="GUIDANCE_V" prefix="GUIDANCE_V_">
