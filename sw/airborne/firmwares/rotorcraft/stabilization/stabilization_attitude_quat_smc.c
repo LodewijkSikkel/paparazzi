@@ -52,6 +52,8 @@ struct Int32Quat* att_quat = 0;
 
 struct Int32Quat att_err = {0, 0, 0, 0};
 
+struct Int32Rates rate_err = {0, 0, 0};
+
 struct FloatRates s_func = {0., 0., 0.};
 
 #define NUM_MOTORS 4
@@ -97,11 +99,17 @@ struct FloatRates h = { 0., 0., 0. };
 #error STABILIZATION_ATTITUDE_INV_INPUT_DISTR_R has to be defined 
 #endif 
 
+struct FloatRates stabilization_attitude_inv_input_distr = 
+    { STABILIZATION_ATTITUDE_INV_INPUT_DISTR_P, STABILIZATION_ATTITUDE_INV_INPUT_DISTR_Q, 0.};
+
 #ifndef STABILIZATION_ATTITUDE_K
 #error STABILIZATION_ATTITUDE_K has to be defined 
 #endif 
 
 struct FloatVect3 stabilization_attitude_k = STABILIZATION_ATTITUDE_K;
+
+#define GAIN_PRESCALER_P 48
+#define GAIN_PRESCALER_D 48
 
 #if PERIODIC_TELEMETRY
 #include "subsystems/datalink/telemetry.h"
@@ -126,12 +134,21 @@ static void send_att_sliding_mode_control(struct transport_tx *trans, struct lin
       &h.p,
       &h.q,
       &h.r,
+      &att_err.qx,
+      &att_err.qy,
+      &att_err.qz,
+      &rate_err.p,
+      &rate_err.q,
+      &rate_err.r,
       &s_func.p,
       &s_func.q,
       &s_func.r,
       &s_contr_incr.p,
       &s_contr_incr.q,
       &s_contr_incr.r,
+      &u.p,
+      &u.q,
+      &u.r,
       &att_quat->qx,
       &att_quat->qy,
       &att_quat->qz,
@@ -224,8 +241,8 @@ static void stabilization_rate_filter(void) {
                       + ( stateGetBodyRates_f()->p - filt_ang_rate.p ) * STABILIZATION_ATTITUDE_FILT_OMEGA_SQR;
   filt_ang_rate_ddot.q = -filt_ang_rate_dot.q * 2 * STABILIZATION_ATTITUDE_FILT_ZETA * STABILIZATION_ATTITUDE_FILT_OMEGA 
                       + ( stateGetBodyRates_f()->q - filt_ang_rate.q ) * STABILIZATION_ATTITUDE_FILT_OMEGA_SQR;
-  filt_ang_rate_ddot.r = -filt_ang_rate_dot.r * 2 * STABILIZATION_ATTITUDE_FILT_ZETA_R * STABILIZATION_ATTITUDE_FILT_OMEGA_R 
-                      + ( stateGetBodyRates_f()->r - filt_ang_rate.r ) * STABILIZATION_ATTITUDE_FILT_OMEGA_SQR_R;
+  // filt_ang_rate_ddot.r = -filt_ang_rate_dot.r * 2 * STABILIZATION_ATTITUDE_FILT_ZETA_R * STABILIZATION_ATTITUDE_FILT_OMEGA_R 
+  //                     + ( stateGetBodyRates_f()->r - filt_ang_rate.r ) * STABILIZATION_ATTITUDE_FILT_OMEGA_SQR_R;
 }
 
 static void stabilization_inputs_filter(void)
@@ -246,8 +263,8 @@ filt_u_act_ddot.p = -filt_u_act_dot.p * 2  * STABILIZATION_ATTITUDE_FILT_ZETA * 
                   + (u_act.p - filt_u_act.p) * STABILIZATION_ATTITUDE_FILT_OMEGA_SQR;
 filt_u_act_ddot.q = -filt_u_act_dot.q * 2  * STABILIZATION_ATTITUDE_FILT_ZETA * STABILIZATION_ATTITUDE_FILT_OMEGA 
                   + (u_act.q - filt_u_act.q) * STABILIZATION_ATTITUDE_FILT_OMEGA_SQR;
-filt_u_act_ddot.r = -filt_u_act_dot.r * 2  * STABILIZATION_ATTITUDE_FILT_ZETA_R * STABILIZATION_ATTITUDE_FILT_OMEGA_R
-                  + (u_act.r - filt_u_act.r) * STABILIZATION_ATTITUDE_FILT_OMEGA_SQR_R;
+// filt_u_act_ddot.r = -filt_u_act_dot.r * 2  * STABILIZATION_ATTITUDE_FILT_ZETA_R * STABILIZATION_ATTITUDE_FILT_OMEGA_R
+//                   + (u_act.r - filt_u_act.r) * STABILIZATION_ATTITUDE_FILT_OMEGA_SQR_R;
 }
 
 static void attitude_run_smc(int32_t smc_commands[])
@@ -259,28 +276,31 @@ static void attitude_run_smc(int32_t smc_commands[])
       + stabilization_attitude_lambda_1.x * filt_ang_rate_dot.p;
   h.q = stabilization_attitude_lambda_0.y * filt_ang_rate.q
       + stabilization_attitude_lambda_1.y * filt_ang_rate_dot.q;
-  h.r = stabilization_attitude_lambda_0.z * filt_ang_rate.r
-      + stabilization_attitude_lambda_1.z * filt_ang_rate_dot.r;
+  // h.r = stabilization_attitude_lambda_0.z * filt_ang_rate.r
+  //     + stabilization_attitude_lambda_1.z * filt_ang_rate_dot.r;
 
   s_func.p = stabilization_attitude_lambda_0.x * -1 * QUAT1_FLOAT_OF_BFP(att_err.qx)
-           + stabilization_attitude_lambda_1.x * stateGetBodyRates_f()->p;
+           + stabilization_attitude_lambda_1.x * -1 * RATE_FLOAT_OF_BFP(rate_err.p);
   s_func.q = stabilization_attitude_lambda_0.y * -1 * QUAT1_FLOAT_OF_BFP(att_err.qy)
-           + stabilization_attitude_lambda_1.y * stateGetBodyRates_f()->q;
-  s_func.r = stabilization_attitude_lambda_0.z * -1 * QUAT1_FLOAT_OF_BFP(att_err.qz)
-           + stabilization_attitude_lambda_1.y * stateGetBodyRates_f()->r;
+           + stabilization_attitude_lambda_1.y * -1 * RATE_FLOAT_OF_BFP(rate_err.q);
+  // s_func.r = stabilization_attitude_lambda_0.z * -1 * QUAT1_FLOAT_OF_BFP(att_err.qz)
+  //          + stabilization_attitude_lambda_1.y * -1 * RATE_FLOAT_OF_BFP(rate_err.r);
 
   s_contr_incr.p = -(h.p + stabilization_attitude_k.x * stabilization_smc_sign(s_func.p)) 
-                  * STABILIZATION_ATTITUDE_INV_INPUT_DISTR_P;
+                  * stabilization_attitude_inv_input_distr.p;
   s_contr_incr.q = -(h.q + stabilization_attitude_k.y * stabilization_smc_sign(s_func.q))
-                  * STABILIZATION_ATTITUDE_INV_INPUT_DISTR_Q;
-  s_contr_incr.r = -(h.r + stabilization_attitude_k.z * stabilization_smc_sign(s_func.r))
-                  * STABILIZATION_ATTITUDE_INV_INPUT_DISTR_R;
+                  * stabilization_attitude_inv_input_distr.q;
+  // s_contr_incr.r = -(h.r + stabilization_attitude_k.z * stabilization_smc_sign(s_func.r))
+  //                 * STABILIZATION_ATTITUDE_INV_INPUT_DISTR_R;
 
   stabilization_inputs_filter();
 
   u.p = filt_u_act.p + s_contr_incr.p;
   u.q = filt_u_act.q + s_contr_incr.q;
-  u.r = filt_u_act.r + s_contr_incr.r;
+  // u.r = filt_u_act.r + s_contr_incr.r;
+
+  u.r = GAIN_PRESCALER_P * STABILIZATION_ATTITUDE_PSI_PGAIN * QUAT1_FLOAT_OF_BFP(att_err.qz) / 4 +
+        GAIN_PRESCALER_D * STABILIZATION_ATTITUDE_PSI_DGAIN  * RATE_FLOAT_OF_BFP(rate_err.r)  / 16;
 
   BOUND_CONTROLS(u.p, -4500., 4500.);
   BOUND_CONTROLS(u.q, -4500., 4500.);
@@ -299,18 +319,30 @@ static void attitude_run_smc(int32_t smc_commands[])
   smc_commands[COMMAND_YAW] = u.r;
 }
 
-void stabilization_attitude_run(bool_t enable_integrator) {
+void stabilization_attitude_run(bool_t enable_integrator) 
+{
+  /* Update reference */
+  stabilization_attitude_ref_update();
 
   /* Propagate the second order filter on the gyroscopes */
   stabilization_rate_filter();
 
   /* attitude error */
   att_quat = stateGetNedToBodyQuat_i();
-  INT32_QUAT_INV_COMP(att_err, *att_quat, stab_att_sp_quat);
+  INT32_QUAT_INV_COMP(att_err, *att_quat, stab_att_ref_quat);
 
   /* wrap it in the shortest direction */
   INT32_QUAT_WRAP_SHORTEST(att_err);
   INT32_QUAT_NORMALIZE(att_err);
+
+  /*  rate error */
+  const struct Int32Rates rate_ref_scaled = {
+    OFFSET_AND_ROUND(stab_att_ref_rate.p, (REF_RATE_FRAC - INT32_RATE_FRAC)),
+    OFFSET_AND_ROUND(stab_att_ref_rate.q, (REF_RATE_FRAC - INT32_RATE_FRAC)),
+    OFFSET_AND_ROUND(stab_att_ref_rate.r, (REF_RATE_FRAC - INT32_RATE_FRAC))
+  };
+  struct Int32Rates *body_rate = stateGetBodyRates_i();
+  RATES_DIFF(rate_err, rate_ref_scaled, (*body_rate));
 
   /* compute the INDI command */
   attitude_run_smc(stabilization_att_smc_cmd);

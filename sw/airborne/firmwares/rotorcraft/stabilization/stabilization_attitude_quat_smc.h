@@ -47,6 +47,9 @@ extern struct FloatRates sliding_mode_control_increment;
 extern float stabilization_attitude_deadband_tau;
 
 extern struct FloatVect3 stabilization_attitude_lambda_0;
+
+extern struct FloatRates stabilization_attitude_inv_input_distr;
+
 extern struct FloatVect3 stabilization_attitude_k;
 
 #endif /* STABILIZATION_ATTITUDE_QUAT_SMC_H */

@@ -1,0 +1,31 @@
+<!DOCTYPE settings SYSTEM "../settings.dtd">
+
+<settings>
+  <dl_settings>
+
+    <dl_settings NAME="smc">
+      <dl_setting var="stabilization_attitude_deadband_tau" min="0" step="0.01" max="1" 
+        module="stabilization/stabilization_attitude_smc_euler_float" shortname="tau"/>
+
+      <dl_setting var="stabilization_attitude_lambda_0.p" min="0" step=".1" max="100" 
+        module="stabilization/stabilization_attitude_smc_euler_float" shortname="lambda_0_x"/>
+      <dl_setting var="stabilization_attitude_lambda_0.q" min="0" step=".1" max="100" 
+        module="stabilization/stabilization_attitude_smc_euler_float" shortname="lambda_0_y"/>
+      <dl_setting var="stabilization_attitude_lambda_0.r" min="0" step=".1" max="100" 
+        module="stabilization/stabilization_attitude_smc_euler_float" shortname="lambda_0_z"/>
+
+      <dl_setting var="stabilization_attitude_inv_input_distr.p" min="0" step="1" max="254" 
+        module="stabilization/stabilization_attitude_smc_euler_float" shortname="b_p"/>
+      <dl_setting var="stabilization_attitude_inv_input_distr.q" min="0" step="1" max="254" 
+        module="stabilization/stabilization_attitude_smc_euler_float" shortname="b_q"/>
+
+      <dl_setting var="stabilization_attitude_k.p" min="0" step="1" max="1000" 
+        module="stabilization/stabilization_attitude_smc_euler_float" shortname="K_x"/>
+      <dl_setting var="stabilization_attitude_k.q" min="0" step="1" max="1000" 
+        module="stabilization/stabilization_attitude_smc_euler_float" shortname="K_y"/>
+      <dl_setting var="stabilization_attitude_k.r" min="0" step="1" max="1000" 
+        module="stabilization/stabilization_attitude_smc_euler_float" shortname="K_z"/>
+    </dl_settings>
+
+  </dl_settings>
+</settings>

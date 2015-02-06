@@ -34,6 +34,7 @@
 #include "paparazzi.h"
 #include "math/pprz_algebra_float.h"
 #include "state.h"
+#include "subsystems/actuators/motor_mixing.h"
 
 struct FloatAttitudeGains stabilization_gains;
 struct FloatEulers stabilization_att_sum_err;
