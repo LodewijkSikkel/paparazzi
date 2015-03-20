@@ -1,0 +1,35 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="object_detection" dir="computer_vision">
+  <doc>
+    <description>
+      Configuration file to build the object detection module
+    </description>
+  </doc>
+  <settings>
+  </settings>
+
+  <header>
+    <file name="object_detection.h"/>
+  </header>
+
+  <init fun="object_detection_init()"/>
+
+  <periodic fun="object_detection_run()" start="object_detection_start()" stop="object_detection_stop()" autorun="TRUE"/>
+  <makefile target="ap">
+    <file name="object_detection.c"/>
+
+    <!-- Include the needed Computer Vision files -->
+    <define name="modules/computer_vision" type="include"/>
+    <file name="image.c" dir="modules/computer_vision/lib/vision"/>
+    <file name="v4l2.c" dir="modules/computer_vision/lib/v4l"/>
+
+    <raw> ap.CFLAGS += -Wno-unused-function</raw>
+    <raw> ap.CFLAGS += $(shell pkg-config --static --cflags opencv)</raw>
+    <raw> ap.LDFLAGS += -static</raw>
+    <raw> ap.LDFLAGS += $(shell pkg-config --static --libs opencv)</raw>
+  </makefile>
+  <makefile target="nps">
+  </makefile>
+
+</module>
