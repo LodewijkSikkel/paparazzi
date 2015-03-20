@@ -35,6 +35,10 @@
 #include "std.h"
 #include "lib/vision/image.h"
 
+// OpenCV libraries
+#include "opencv/cv.h"
+#define CV_H
+
 #define V4L2_IMG_NONE 255  //< There currently no image available
 
 /* V4L2 memory mapped image buffer */
@@ -61,8 +65,10 @@ struct v4l2_device {
 bool_t v4l2_init_subdev(char *subdev_name, uint8_t pad, uint8_t which, uint16_t code, uint16_t width, uint16_t height);
 struct v4l2_device *v4l2_init(char *device_name, uint16_t width, uint16_t height, uint8_t buffers_cnt);
 void v4l2_image_get(struct v4l2_device *dev, struct image_t *img);
+void v4l2_image_get_opencv(struct v4l2_device *dev, IplImage *img);
 bool_t v4l2_image_get_nonblock(struct v4l2_device *dev, struct image_t *img);
 void v4l2_image_free(struct v4l2_device *dev, struct image_t *img);
+void v4l2_image_free_opencv(struct v4l2_device *dev, IplImage *img);
 bool_t v4l2_start_capture(struct v4l2_device *dev);
 bool_t v4l2_stop_capture(struct v4l2_device *dev);
 void v4l2_close(struct v4l2_device *dev);
