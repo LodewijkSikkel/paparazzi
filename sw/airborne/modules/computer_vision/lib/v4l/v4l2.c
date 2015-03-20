@@ -58,6 +58,8 @@ static void *v4l2_capture_thread(void *data)
   fd_set fds;
 
   while (TRUE) {
+    
+
     FD_ZERO(&fds);
     FD_SET(dev->fd, &fds);
 
@@ -336,12 +338,11 @@ void v4l2_image_get_opencv(struct v4l2_device *dev, IplImage *img) {
   }
 
   // Set the image
-  img->width = dev->w;
-  img->height = dev->h;
+  // img->width = dev->w;
+  // img->height = dev->h;
   img->ID = img_idx;
-  img->nSize = dev->buffers[img_idx].length;
-
-  // cvSetData(img, buf, img->widthStep);
+  // img->nSize = dev->buffers[img_idx].length;
+  img->imageData = (char *)dev->buffers[img_idx].buf;
 }
 
 /**
