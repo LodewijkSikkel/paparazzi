@@ -316,6 +316,34 @@ void v4l2_image_get(struct v4l2_device *dev, struct image_t *img) {
   memcpy(&img->ts, &dev->buffers[img_idx].timestamp, sizeof(struct timeval));
 }
 
+void v4l2_image_get_opencv(struct v4l2_device *dev, IplImage *img) {
+  uint16_t img_idx = V4L2_IMG_NONE;
+
+  // Continu to wait for an image
+  while (img_idx == V4L2_IMG_NONE) {
+    // We first check if the deq_idx is ok, this reduces the amount of locks
+    if (dev->buffers_deq_idx != V4L2_IMG_NONE) {
+      pthread_mutex_lock(&dev->mutex);
+
+      // We need to check it here again, because it could be changed
+      if (dev->buffers_deq_idx != V4L2_IMG_NONE) {
+        img_idx = dev->buffers_deq_idx;
+        dev->buffers_deq_idx = V4L2_IMG_NONE;
+      }
+
+      pthread_mutex_unlock(&dev->mutex);
+    }
+  }
+
+  // Set the image
+  img->width = dev->w;
+  img->height = dev->h;
+  img->ID = img_idx;
+  img->nSize = dev->buffers[img_idx].length;
+
+  // cvSetData(img, buf, img->widthStep);
+}
+
 /**
  * Get the latest image and lock it (Thread safe, NON BLOCKING)
  * This function returns NULL if it can't get access to the current image.
@@ -368,6 +396,20 @@ void v4l2_image_free(struct v4l2_device *dev, struct image_t *img)
   buf.index = img->buf_idx;
   if (ioctl(dev->fd, VIDIOC_QBUF, &buf) < 0) {
     printf("[v4l2] Could not enqueue %d for %s\n", img->buf_idx, dev->name);
+  }
+}
+
+void v4l2_image_free_opencv(struct v4l2_device *dev, IplImage *img)
+{
+  struct v4l2_buffer buf;
+
+  // Enqueue the buffer
+  CLEAR(buf);
+  buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  buf.memory = V4L2_MEMORY_MMAP;
+  buf.index = img->ID;
+  if (ioctl(dev->fd, VIDIOC_QBUF, &buf) < 0) {
+    printf("[v4l2] Could not enqueue %d for %s\n", buf.index, dev->name);
   }
 }
 
