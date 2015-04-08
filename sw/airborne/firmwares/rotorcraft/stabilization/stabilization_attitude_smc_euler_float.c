@@ -35,6 +35,7 @@
 #include "paparazzi.h"
 #include "state.h"
 #include "generated/airframe.h"
+#include "subsystems/abi.h"
 #include "subsystems/imu.h"
 #include "subsystems/actuators/motor_mixing.h"
 
@@ -54,7 +55,9 @@ struct FloatEulers att_err;
 struct FloatRates *rate_float;
 struct FloatRates rate_err;
 
-float rpm_motor[MOTOR_MIXING_NB_MOTOR];
+abi_event rpm_ev;
+float rpm_scaled[ACTUATORS_NB];
+static void rpm_cb(uint8_t sender_id, const uint16_t *rpm, const uint8_t *count);
 
 #define MOTOR_SCALING_VALUE ( 1. / MOTOR_MIXING_NB_MOTOR ) 
 
@@ -101,11 +104,26 @@ struct FloatRates u = {0., 0., 0.};
 struct FloatRates stabilization_attitude_inv_input_distr = 
     { STABILIZATION_ATTITUDE_INV_INPUT_DISTR_P, STABILIZATION_ATTITUDE_INV_INPUT_DISTR_Q, 0.};
 
+/* The initial gain values */
 #ifndef STABILIZATION_ATTITUDE_K
 #error STABILIZATION_ATTITUDE_K has to be defined 
 #endif 
 
 struct FloatRates stabilization_attitude_k = STABILIZATION_ATTITUDE_K;
+
+/* Adaption parameters */
+#ifndef STABILIZATION_ATTITUDE_ETA
+#error STABILIZATION_ATTITUDE_ETA has to be defined
+#endif
+
+struct FloatRates stabilization_attitude_eta = STABILIZATION_ATTITUDE_ETA
+
+uint8_t stabilization_attitude_counter[3] = {0, 0, 0};
+
+#ifndef STABILIZATION_ATTITUDE_N
+#error STABILIZATION_ATTITUDE_N has to be defined
+#endif
+uint8_t stabilization_attitude_N = 0;
 
 #if PERIODIC_TELEMETRY
 #include "subsystems/datalink/telemetry.h"
@@ -147,16 +165,17 @@ static void send_att_ref(struct transport_tx *trans, struct link_device *dev)
                                         &stab_att_ref_accel.r);
 }
 
+float sign_slid_func_p;
+float sign_slid_func_q;
+
 static void send_att_smc(struct transport_tx *trans, struct link_device *dev)
 {
   pprz_msg_send_STAB_ATTITUDE_SMC(trans, dev, AC_ID,
                                   &(att_float->phi), &(att_float->theta), &(att_float->psi),
-                                  &stab_att_ref_euler.phi,
-                                  &stab_att_ref_euler.theta,
-                                  &stab_att_ref_euler.psi,
+                                  &stab_att_sp_euler.phi, &stab_att_sp_euler.theta, &stab_att_sp_euler.psi,
                                   &(rate_float->p), &(rate_float->q), &(rate_float->r),
-                                  &stab_att_ref_rate.p,
-                                  &stab_att_ref_rate.q,
+                                  &sign_slid_func_p,
+                                  &slid_contr_incr.p,
                                   &stab_att_ref_rate.r,
                                   &u.p, &u.q, &u.r,
                                   &filt_u_act.p,
@@ -169,9 +188,12 @@ void stabilization_attitude_init(void)
 {
   stabilization_attitude_ref_init();
 
+  // Register to RPM messages
+  AbiBindMsgRPM(ABI_BROADCAST, &rpm_ev, rpm_cb);
+
 #if PERIODIC_TELEMETRY
-  register_periodic_telemetry(DefaultPeriodic, "STAB_ATTITUDE", send_att);
-  register_periodic_telemetry(DefaultPeriodic, "STAB_ATTITUDE_REF", send_att_ref);
+  // register_periodic_telemetry(DefaultPeriodic, "STAB_ATTITUDE", send_att);
+  // register_periodic_telemetry(DefaultPeriodic, "STAB_ATTITUDE_REF", send_att_ref);
   register_periodic_telemetry(DefaultPeriodic, "STAB_ATTITUDE_SMC", send_att_smc);
 #endif
 }
@@ -235,9 +257,9 @@ static void stabilization_rate_filter(void) {
 
 static void stabilization_input_filter(void)
 {
-  u_act.p = ( -rpm_motor[0] + rpm_motor[1] + rpm_motor[2] - rpm_motor[3] ) * MOTOR_SCALING_VALUE;
-  u_act.q = (  rpm_motor[0] + rpm_motor[1] - rpm_motor[2] - rpm_motor[3] ) * MOTOR_SCALING_VALUE;
-  u_act.r = (  rpm_motor[0] - rpm_motor[1] + rpm_motor[2] - rpm_motor[3] ) * MOTOR_SCALING_VALUE;
+  u_act.p = ( -rpm_scaled[0] + rpm_scaled[1] + rpm_scaled[2] - rpm_scaled[3] ) * MOTOR_SCALING_VALUE;
+  u_act.q = (  rpm_scaled[0] + rpm_scaled[1] - rpm_scaled[2] - rpm_scaled[3] ) * MOTOR_SCALING_VALUE;
+  u_act.r = (  rpm_scaled[0] - rpm_scaled[1] + rpm_scaled[2] - rpm_scaled[3] ) * MOTOR_SCALING_VALUE;
 
   filt_u_act.p = filt_u_act.p + filt_u_act_dot.p * STABILIZATION_ATTITUDE_FILT_DT;
   filt_u_act.q = filt_u_act.q + filt_u_act_dot.q * STABILIZATION_ATTITUDE_FILT_DT;
@@ -260,22 +282,25 @@ static void stabilization_input_filter(void)
   _v = _v < _min ? _min : _v > _max ? _max : _v; \
 } 
 
-static float stabilization_smc_sign(float value) 
+static void rpm_cb(uint8_t sender_id, const uint16_t *rpm, const uint8_t *count)
 {
-  return value < -stabilization_attitude_deadband_tau ? -1 : ( value > +stabilization_attitude_deadband_tau ? 1 : 0 );
+  /** index 0: top right motor
+   *  index 1: top left motor
+   *  index 2: bottom left motor
+   *  index 3: bottom right motor 
+   */
+  for (uint8_t i = 0; i < *count; i++) {
+    rpm_scaled[i] = (rpm[i] - get_servo_min(i));
+    rpm_scaled[i] *= (MAX_PPRZ / (float)(get_servo_max(i)-get_servo_min(i)));
+  }
 }
 
-static void stabilization_attitude_cmd(void)
+static float stabilization_smc_sign(float value) 
 {
-   /* index 0: top right motor
-      index 1: top left motor
-      index 2: bottom left motor
-      index 3: bottom right motor */
-  for (int i = 0; i < MOTOR_MIXING_NB_MOTOR; i++) {
-    rpm_motor[i] = actuators_bebop.rpm_obs[i] - STABILIZATION_ATTITUDE_SERVO_MIN;
-    rpm_motor[i] *= (MAX_PPRZ / (float)(STABILIZATION_ATTITUDE_SERVO_MAX-STABILIZATION_ATTITUDE_SERVO_MIN));
-  }
+  return value <= -1 ? -1 : ( value >= +1 ? 1 : stabilization_attitude_deadband_tau );
+}
 
+static void stabilization_attitude_cmd(void) {
   // Update the input filter
   stabilization_input_filter();
 
@@ -287,16 +312,19 @@ static void stabilization_attitude_cmd(void)
   // h.r = stabilization_attitude_lambda_0.r * filt_ang_rate.r
   //       + stabilization_attitude_lambda_1.r * filt_ang_rate_dot.r;
 
-  slid_func.p = stabilization_attitude_lambda_0.p * -1 * att_err.phi
-                + stabilization_attitude_lambda_1.p * -1 * rate_err.p;
-  slid_func.q = stabilization_attitude_lambda_0.q * -1 * att_err.theta
-                + stabilization_attitude_lambda_1.q * -1 * rate_err.q;
+  slid_func.p = stabilization_attitude_lambda_0.p * att_err.phi
+                + stabilization_attitude_lambda_1.p * rate_float->p;
+  slid_func.q = stabilization_attitude_lambda_0.q * att_err.theta
+                + stabilization_attitude_lambda_1.q * rate_float->q;
   // slid_func.r = stabilization_attitude_lambda_0.r * -1 * att_err.psi
   //               + stabilization_attitude_lambda_1.r * -1 * rate_err.r;
 
-  slid_contr_incr.p = -(h.p + stabilization_attitude_k.p * stabilization_smc_sign(slid_func.p)) 
+  sign_slid_func_p = stabilization_smc_sign(slid_func.p / stabilization_attitude_deadband_tau);
+  sign_slid_func_q = stabilization_smc_sign(slid_func.q / stabilization_attitude_deadband_tau);
+
+  slid_contr_incr.p = -(h.p + stabilization_attitude_k.p * stabilization_smc_sign(slid_func.p / stabilization_attitude_deadband_tau)) 
                       * stabilization_attitude_inv_input_distr.p;
-  slid_contr_incr.q = -(h.q + stabilization_attitude_k.q * stabilization_smc_sign(slid_func.q))
+  slid_contr_incr.q = -(h.q + stabilization_attitude_k.q * stabilization_smc_sign(slid_func.q / stabilization_attitude_deadband_tau))
                       * stabilization_attitude_inv_input_distr.q;
   // slid_contr_incr.r = -(h.r + stabilization_attitude_k.q * stabilization_smc_sign(slid_func.r))
   //                     * STABILIZATION_ATTITUDE_INV_INPUT_DISTR_R;
@@ -312,7 +340,7 @@ static void stabilization_attitude_cmd(void)
   // u.p = filt_u_act.p + (stabilization_attitude_inv_input_distr.p * (h.p - filt_ang_rate_dot.p));
   // u.q = filt_u_act.q + (stabilization_attitude_inv_input_distr.q * (h.q - filt_ang_rate_dot.q));
 
-  u.r = STABILIZATION_ATTITUDE_PSI_PGAIN * att_err.psi + STABILIZATION_ATTITUDE_PSI_DGAIN * rate_err.r;
+  u.r = STABILIZATION_ATTITUDE_PSI_PGAIN * -att_err.psi + STABILIZATION_ATTITUDE_PSI_DGAIN * rate_err.r;
 
   BOUND_CONTROLS(u.p, -4500., 4500.);
   BOUND_CONTROLS(u.q, -4500., 4500.);
@@ -342,12 +370,12 @@ void stabilization_attitude_run(bool_t  in_flight)
   /* Compute feedback */
   /* attitude error */
   att_float = stateGetNedToBodyEulers_f();
-  EULERS_DIFF(att_err, stab_att_ref_euler, *att_float); /* c = a - b */
+  EULERS_DIFF(att_err, *att_float, stab_att_sp_euler); /* c = a - b */
   FLOAT_ANGLE_NORMALIZE(att_err.psi);
 
   /* rate error */
   rate_float = stateGetBodyRates_f();
-  RATES_DIFF(rate_err, stab_att_ref_rate, *rate_float); /* c = a - b */
+  RATES_DIFF(rate_err, stab_att_ref_rate, *rate_float)
 
   stabilization_attitude_cmd();
 

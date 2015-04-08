@@ -22,14 +22,14 @@
     <subsystem name="gps" type="furuno"/>
     <subsystem name="stabilization" type="float_smc"/>
     <subsystem name="ahrs" type="float_cmpl_quat"/>
-    <subsystem name="ins" type="extended"/>
+    <subsystem name="ins"/>
   </firmware>
 
   <modules main_freq="512">
     <load name="send_imu_mag_current.xml"/>
-    <load name="file_logger.xml">
+<!--     <load name="file_logger.xml">
       <define name="FILE_LOGGER_PATH" value="\\\"/data/ftp/internal_000/\\\""/>
-    </load>
+    </load> -->
   </modules>
 
   <commands>
@@ -140,9 +140,9 @@
     <define name="FILT_OMEGA_R" value="20." unit="rad/s"/>
 
     <!-- SMC --> 
-    <define name="DEADBAND_TAU" value="0.1"/>
-    <define name="LAMBDA_0" value="{ 3., 3., 0. }"/>
-    <define name="K" value="{ 10., 10., 0. }"/>
+    <define name="DEADBAND_TAU" value="0.4"/>
+    <define name="LAMBDA_0" value="{ 10., 10., 0. }"/>
+    <define name="K" value="{ 30., 30., 0. }"/>
 
     <!-- INDI -->
     <define name="REF_ERR_P" value="130.0"/>
@@ -166,14 +166,14 @@
     <define name="DEADBAND_R" value="50"/>
 
     <!-- reference -->
-    <define name="REF_OMEGA_P" value="600" unit="deg/s"/>
+    <define name="REF_OMEGA_P" value="200" unit="deg/s"/>
     <define name="REF_ZETA_P" value="0.9"/>
-    <define name="REF_MAX_P" value="600." unit="deg/s"/>
+    <define name="REF_MAX_P" value="200." unit="deg/s"/>
     <define name="REF_MAX_PDOT" value="RadOfDeg(8000.)"/>
 
-    <define name="REF_OMEGA_Q" value="600" unit="deg/s"/>
+    <define name="REF_OMEGA_Q" value="200" unit="deg/s"/>
     <define name="REF_ZETA_Q" value="0.9"/>
-    <define name="REF_MAX_Q" value="600." unit="deg/s"/>
+    <define name="REF_MAX_Q" value="200." unit="deg/s"/>
     <define name="REF_MAX_QDOT" value="RadOfDeg(8000.)"/>
 
     <define name="REF_OMEGA_R" value="600" unit="deg/s"/>

@@ -40,5 +40,4 @@ extern struct FloatRates stabilization_attitude_inv_input_distr;
 
 extern struct FloatRates stabilization_attitude_k;
 
-
 #endif /* STABILIZATION_ATTITUDE_EULER_FLOAT_H */
