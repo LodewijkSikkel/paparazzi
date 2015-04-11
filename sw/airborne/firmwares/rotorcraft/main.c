@@ -33,11 +33,6 @@
 #include <inttypes.h>
 #include "mcu.h"
 #include "mcu_periph/sys_time.h"
-#include "mcu_periph/i2c.h"
-#include "mcu_periph/uart.h"
-#if USE_UDP
-#include "mcu_periph/udp.h"
-#endif
 #include "led.h"
 
 #include "subsystems/datalink/telemetry.h"
@@ -69,7 +64,9 @@ PRINT_CONFIG_MSG_VALUE("USE_BARO_BOARD is TRUE, reading onboard baro: ", BARO_BO
 #include "firmwares/rotorcraft/guidance.h"
 
 #include "subsystems/ahrs.h"
+#if USE_AHRS_ALIGNER
 #include "subsystems/ahrs/ahrs_aligner.h"
+#endif
 #include "subsystems/ins.h"
 
 #include "state.h"
@@ -82,10 +79,6 @@ PRINT_CONFIG_MSG_VALUE("USE_BARO_BOARD is TRUE, reading onboard baro: ", BARO_BO
 
 #include "generated/modules.h"
 #include "subsystems/abi.h"
-
-#if USE_USB_SERIAL
-#include "mcu_periph/usb_serial.h"
-#endif
 
 /* if PRINT_CONFIG is defined, print some config options */
 PRINT_CONFIG_VAR(PERIODIC_FREQUENCY)
@@ -160,8 +153,14 @@ STATIC_INLINE void main_init(void)
   baro_init();
 #endif
   imu_init();
+#if USE_AHRS_ALIGNER
   ahrs_aligner_init();
+#endif
+
+#if USE_AHRS
   ahrs_init();
+#endif
+
   ins_init();
 
 #if USE_GPS
@@ -190,6 +189,9 @@ STATIC_INLINE void main_init(void)
 #if USE_BARO_BOARD
   baro_tid = sys_time_register_timer(1. / BARO_PERIODIC_FREQUENCY, NULL);
 #endif
+
+  // send body_to_imu from here for now
+  AbiSendMsgBODY_TO_IMU_QUAT(1, orientationGetQuat_f(&imu.body_to_imu));
 }
 
 STATIC_INLINE void handle_periodic_tasks(void)
@@ -224,6 +226,11 @@ STATIC_INLINE void main_periodic(void)
 
   imu_periodic();
 
+  //FIXME: temporary hack, remove me
+#ifdef InsPeriodic
+  InsPeriodic();
+#endif
+
   /* run control loops */
   autopilot_periodic();
   /* set actuators     */
@@ -255,7 +262,7 @@ STATIC_INLINE void telemetry_periodic(void)
   /* then report periodicly */
   else {
 #if PERIODIC_TELEMETRY
-    periodic_telemetry_send_Main(&(DefaultChannel).trans_tx, &(DefaultDevice).device);
+    periodic_telemetry_send_Main(DefaultPeriodic, &(DefaultChannel).trans_tx, &(DefaultDevice).device);
 #endif
   }
 }
@@ -304,20 +311,8 @@ STATIC_INLINE void failsafe_check(void)
 
 STATIC_INLINE void main_event(void)
 {
-
-  i2c_event();
-
-#ifndef SITL
-  uart_event();
-#endif
-
-#if USE_UDP
-  udp_event();
-#endif
-
-#if USE_USB_SERIAL
-  VCOM_event();
-#endif
+  /* event functions for mcu peripherals, like i2c, uart, etc.. */
+  mcu_event();
 
   DatalinkEvent();
 
@@ -343,61 +338,34 @@ STATIC_INLINE void main_event(void)
 
 }
 
-static inline void on_accel_event(void)
-{
-#if USE_AUTO_AHRS_FREQ || !defined(AHRS_CORRECT_FREQUENCY)
-  PRINT_CONFIG_MSG("Calculating dt for AHRS accel update.")
-  // timestamp in usec when last callback was received
-  static uint32_t last_ts = 0;
+static inline void on_accel_event( void ) {
   // current timestamp
   uint32_t now_ts = get_sys_time_usec();
-  // dt between this and last callback
-  float dt = (float)(now_ts - last_ts) / 1e6;
-  last_ts = now_ts;
-#else
-  PRINT_CONFIG_MSG("Using fixed AHRS_CORRECT_FREQUENCY for AHRS accel update.")
-  PRINT_CONFIG_VAR(AHRS_CORRECT_FREQUENCY)
-  const float dt = 1. / (AHRS_CORRECT_FREQUENCY);
-#endif
 
   imu_scale_accel(&imu);
 
-  if (ahrs.status != AHRS_UNINIT) {
-    ahrs_update_accel(dt);
-  }
+  AbiSendMsgIMU_ACCEL_INT32(1, now_ts, &imu.accel);
 }
 
-static inline void on_gyro_event(void)
-{
-#if USE_AUTO_AHRS_FREQ || !defined(AHRS_PROPAGATE_FREQUENCY)
-  PRINT_CONFIG_MSG("Calculating dt for AHRS/INS propagation.")
-  // timestamp in usec when last callback was received
-  static uint32_t last_ts = 0;
+static inline void on_gyro_event( void ) {
   // current timestamp
   uint32_t now_ts = get_sys_time_usec();
-  // dt between this and last callback in seconds
-  float dt = (float)(now_ts - last_ts) / 1e6;
-  last_ts = now_ts;
-#else
-  PRINT_CONFIG_MSG("Using fixed AHRS_PROPAGATE_FREQUENCY for AHRS/INS propagation.")
-  PRINT_CONFIG_VAR(AHRS_PROPAGATE_FREQUENCY)
-  const float dt = 1. / (AHRS_PROPAGATE_FREQUENCY);
-#endif
 
   imu_scale_gyro(&imu);
 
-  if (ahrs.status == AHRS_UNINIT) {
+  AbiSendMsgIMU_GYRO_INT32(1, now_ts, &imu.gyro_prev);
+
+#if USE_AHRS_ALIGNER
+  if (ahrs_aligner.status != AHRS_ALIGNER_LOCKED) {
     ahrs_aligner_run();
-    if (ahrs_aligner.status == AHRS_ALIGNER_LOCKED) {
-      ahrs_align();
-    }
-  } else {
-    ahrs_propagate(dt);
-#ifdef SITL
-    if (nps_bypass_ahrs) { sim_overwrite_ahrs(); }
-#endif
-    ins_propagate(dt);
+    return;
   }
+#endif
+
+#ifdef SITL
+  if (nps_bypass_ahrs) sim_overwrite_ahrs();
+#endif
+
 #ifdef USE_VEHICLE_INTERFACE
   vi_notify_imu_available();
 #endif
@@ -405,8 +373,11 @@ static inline void on_gyro_event(void)
 
 static inline void on_gps_event(void)
 {
-  ahrs_update_gps();
-  ins_update_gps();
+  // current timestamp
+  uint32_t now_ts = get_sys_time_usec();
+
+  AbiSendMsgGPS(1, now_ts, &gps);
+
 #ifdef USE_VEHICLE_INTERFACE
   if (gps.fix == GPS_FIX_3D) {
     vi_notify_gps_available();
@@ -417,27 +388,10 @@ static inline void on_gps_event(void)
 static inline void on_mag_event(void)
 {
   imu_scale_mag(&imu);
-
-#if USE_MAGNETOMETER
-#if USE_AUTO_AHRS_FREQ || !defined(AHRS_MAG_CORRECT_FREQUENCY)
-  PRINT_CONFIG_MSG("Calculating dt for AHRS mag update.")
-  // timestamp in usec when last callback was received
-  static uint32_t last_ts = 0;
   // current timestamp
   uint32_t now_ts = get_sys_time_usec();
-  // dt between this and last callback in seconds
-  float dt = (float)(now_ts - last_ts) / 1e6;
-  last_ts = now_ts;
-#else
-  PRINT_CONFIG_MSG("Using fixed AHRS_MAG_CORRECT_FREQUENCY for AHRS mag update.")
-  PRINT_CONFIG_VAR(AHRS_MAG_CORRECT_FREQUENCY)
-  const float dt = 1. / (AHRS_MAG_CORRECT_FREQUENCY);
-#endif
 
-  if (ahrs.status == AHRS_RUNNING) {
-    ahrs_update_mag(dt);
-  }
-#endif // USE_MAGNETOMETER
+  AbiSendMsgIMU_MAG_INT32(1, now_ts, &imu.mag);
 
 #ifdef USE_VEHICLE_INTERFACE
   vi_notify_mag_available();

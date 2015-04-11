@@ -28,14 +28,12 @@
 #include "mcu.h"
 #include "mcu_periph/sys_time.h"
 #include "led.h"
-#include "mcu_periph/uart.h"
 #include "mcu_periph/i2c.h"
 #include "messages.h"
 #include "subsystems/datalink/downlink.h"
 
 #include "subsystems/imu.h"
 
-#include "interrupt_hw.h"
 
 static inline void main_init(void);
 static inline void main_periodic_task(void);
@@ -67,6 +65,8 @@ static inline void main_init(void)
   imu_init();
 
   mcu_int_enable();
+
+  downlink_init();
 }
 
 static inline void led_toggle(void)
@@ -116,16 +116,17 @@ static inline void main_periodic_task(void)
 
 static inline void main_event_task(void)
 {
-
+  mcu_event();
   ImuEvent(on_gyro_event, on_accel_event, on_mag_event);
-
 }
 
 static inline void on_accel_event(void)
 {
   imu_scale_accel(&imu);
 
+#if USE_LED_3
   RunOnceEvery(50, LED_TOGGLE(3));
+#endif
   static uint8_t cnt;
   cnt++;
   if (cnt > 15) { cnt = 0; }
@@ -146,7 +147,9 @@ static inline void on_gyro_event(void)
 {
   imu_scale_gyro(&imu);
 
+#if USE_LED_2
   RunOnceEvery(50, LED_TOGGLE(2));
+#endif
   static uint8_t cnt;
   cnt++;
   if (cnt > 15) { cnt = 0; }
