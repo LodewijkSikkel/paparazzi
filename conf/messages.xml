@@ -188,22 +188,22 @@
   <message name="STAB_ATTITUDE_SMC" id="23">
     <field name="att_float_phi" type="float"/>
     <field name="att_float_theta" type="float"/>
-    <field name="att_float_psi" type="float"/>
-    <field name="stab_att_ref_euler_phi" type="float"/>
-    <field name="stab_att_ref_euler_theta" type="float"/>
-    <field name="stab_att_ref_euler_psi" type="float"/>
+    <!-- <field name="att_float_psi" type="float"/> -->
+    <field name="stab_att_sp_euler_phi" type="float"/>
+    <field name="stab_att_sp_euler_theta" type="float"/>
+    <!-- <field name="stab_att_sp_euler_psi" type="float"/> -->
     <field name="rate_float_p" type="float"/>
     <field name="rate_float_q" type="float"/>
-    <field name="rate_float_r" type="float"/>
-    <field name="stab_att_ref_rate_p" type="float"/>
-    <field name="stab_att_ref_rate_q" type="float"/>
-    <field name="stab_att_ref_rate_r" type="float"/>
+    <!-- <field name="rate_float_r" type="float"/> -->
+    <field name="s_p" type="float"/>
+    <field name="s_q" type="float"/>
+    <!-- <field name="s_r" type="float"/> -->
+    <field name="stabilization_attitude_k_p" type="float"/>
+    <field name="stabilization_attitude_k_q" type="float"/>
+    <!-- <field name="stabilization_attitude_k_r" type="float"/> -->
     <field name="u_p" type="float"/>
     <field name="u_q" type="float"/>
-    <field name="u_r" type="float"/>
-    <field name="filt_u_act_p" type="float"/>
-    <field name="filt_u_act_q" type="float"/>
-    <field name="filt_u_act_r" type="float"/>
+    <!-- <field name="u_r" type="float"/> -->
   </message>
 
   <!-- ID 24 is free -->

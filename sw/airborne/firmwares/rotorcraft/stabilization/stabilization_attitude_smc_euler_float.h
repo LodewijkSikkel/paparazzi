@@ -34,6 +34,10 @@
 
 extern float stabilization_attitude_deadband_tau;
 
+extern uint8_t stabilization_attitude_N;
+
+extern struct FloatRates stabilization_attitude_eta;
+
 extern struct FloatRates stabilization_attitude_lambda_0;
 
 extern struct FloatRates stabilization_attitude_inv_input_distr;

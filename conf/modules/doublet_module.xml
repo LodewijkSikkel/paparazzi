@@ -1,0 +1,29 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="doublet" dir="testing">
+  <doc>
+    <description>
+        Doublet manoeuver
+    </description>
+  </doc>
+  <header>
+    <file name="doublet_module.h"/>
+  </header>
+
+  <init fun="doublet_module_init()"/>
+  <periodic fun="doublet_module_run()" start="doublet_module_start()" stop="doublet_module_stop()" autorun="TRUE"/>
+
+  <makefile target="ap">
+    <define name="modules/testing" type="include"/>
+    <file name="doublet_module.c"/>
+
+    <raw>
+      ap.CFLAGS += -DGUIDANCE_V_MODE_MODULE_SETTING=GUIDANCE_V_MODE_HOVER
+      ap.CFLAGS += -DGUIDANCE_H_MODE_MODULE_SETTING=GUIDANCE_H_MODE_MODULE
+    </raw>
+  </makefile>
+
+  <makefile target="nps">
+  </makefile>
+
+</module>

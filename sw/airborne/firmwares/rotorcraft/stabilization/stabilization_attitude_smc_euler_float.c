@@ -25,6 +25,8 @@
  * TO DO
  */
 
+#include <stdio.h>
+
 #include "generated/airframe.h"
 
 #include "firmwares/rotorcraft/stabilization/stabilization_attitude.h"
@@ -116,14 +118,23 @@ struct FloatRates stabilization_attitude_k = STABILIZATION_ATTITUDE_K;
 #error STABILIZATION_ATTITUDE_ETA has to be defined
 #endif
 
-struct FloatRates stabilization_attitude_eta = STABILIZATION_ATTITUDE_ETA
+struct FloatRates stabilization_attitude_eta = STABILIZATION_ATTITUDE_ETA;
+
+#ifndef STABILIZATION_ATTITUDE_K_MIN
+#error STABILIZATION_ATTITUDE_K_MIN has to be defined 
+#endif 
+
+struct FloatRates stabilization_attitude_k_min = STABILIZATION_ATTITUDE_K_MIN;
+
+struct FloatRates abs_slid_func_prev = {0., 0., 0.};
 
 uint8_t stabilization_attitude_counter[3] = {0, 0, 0};
 
 #ifndef STABILIZATION_ATTITUDE_N
 #error STABILIZATION_ATTITUDE_N has to be defined
 #endif
-uint8_t stabilization_attitude_N = 0;
+
+uint8_t stabilization_attitude_N = STABILIZATION_ATTITUDE_N;
 
 #if PERIODIC_TELEMETRY
 #include "subsystems/datalink/telemetry.h"
@@ -171,16 +182,12 @@ float sign_slid_func_q;
 static void send_att_smc(struct transport_tx *trans, struct link_device *dev)
 {
   pprz_msg_send_STAB_ATTITUDE_SMC(trans, dev, AC_ID,
-                                  &(att_float->phi), &(att_float->theta), &(att_float->psi),
-                                  &stab_att_sp_euler.phi, &stab_att_sp_euler.theta, &stab_att_sp_euler.psi,
-                                  &(rate_float->p), &(rate_float->q), &(rate_float->r),
-                                  &sign_slid_func_p,
-                                  &slid_contr_incr.p,
-                                  &stab_att_ref_rate.r,
-                                  &u.p, &u.q, &u.r,
-                                  &filt_u_act.p,
-                                  &filt_u_act.q,
-                                  &filt_u_act.r);
+                                  &(att_float->phi), &(att_float->theta),
+                                  &stab_att_sp_euler.phi, &stab_att_sp_euler.theta,
+                                  &(rate_float->p), &(rate_float->q),
+                                  &slid_func.p, &slid_func.q,
+                                  &stabilization_attitude_k.p, &stabilization_attitude_k.q,
+                                  &u.p, &u.q);
 }
 #endif
 
@@ -300,6 +307,39 @@ static float stabilization_smc_sign(float value)
   return value <= -1 ? -1 : ( value >= +1 ? 1 : stabilization_attitude_deadband_tau );
 }
 
+static int8_t stabilization_smc_get_adaptation_value(float abs_value, float *abs_value_prev, uint8_t* counter)
+{
+  printf("%.4f, %.4f, %d\n", abs_value, *abs_value_prev, *counter);
+
+  // The previous sample as well as the current sample lie within the boundary
+  if ( abs_value <= stabilization_attitude_deadband_tau && 
+        *abs_value_prev <= stabilization_attitude_deadband_tau ) {
+    if ( ++(*counter) > stabilization_attitude_N ) {
+       *counter = 0;
+       *abs_value_prev = abs_value;
+       return 1;
+    }
+  }
+  // The previous sample as well as the current sample lie within the boundary
+  else if (abs_value > stabilization_attitude_deadband_tau &&
+        *abs_value_prev > stabilization_attitude_deadband_tau ) { 
+    if ( ++(*counter) > stabilization_attitude_N ) {
+      *counter = 0;
+      *abs_value_prev = abs_value;
+      return -1;
+    }
+  } 
+  // The previous sample does not lie within the same region as the current sample
+  else {
+    *counter = 0;
+  }
+
+  // Set the previous sample to be equal to the current sample
+  *abs_value_prev = abs_value;
+
+  return 0;
+} 
+
 static void stabilization_attitude_cmd(void) {
   // Update the input filter
   stabilization_input_filter();
@@ -319,23 +359,34 @@ static void stabilization_attitude_cmd(void) {
   // slid_func.r = stabilization_attitude_lambda_0.r * -1 * att_err.psi
   //               + stabilization_attitude_lambda_1.r * -1 * rate_err.r;
 
-  sign_slid_func_p = stabilization_smc_sign(slid_func.p / stabilization_attitude_deadband_tau);
-  sign_slid_func_q = stabilization_smc_sign(slid_func.q / stabilization_attitude_deadband_tau);
+  // sign_slid_func_p = stabilization_smc_get_adaptation_value(fabs(slid_func.p), &abs_slid_func_prev.p, &stabilization_attitude_counter[0]);
 
-  slid_contr_incr.p = -(h.p + stabilization_attitude_k.p * stabilization_smc_sign(slid_func.p / stabilization_attitude_deadband_tau)) 
-                      * stabilization_attitude_inv_input_distr.p;
-  slid_contr_incr.q = -(h.q + stabilization_attitude_k.q * stabilization_smc_sign(slid_func.q / stabilization_attitude_deadband_tau))
-                      * stabilization_attitude_inv_input_distr.q;
+  // sign_slid_func_q = stabilization_smc_get_adaptation_value(fabs(slid_func.q), &abs_slid_func_prev.q, &stabilization_attitude_counter[1]);
+
+  /**
+   * Gain adaption
+   */
+  stabilization_attitude_k.p = stabilization_attitude_k.p + ((stabilization_attitude_k.p <= stabilization_attitude_k_min.p) ? 
+                                stabilization_attitude_eta.p : -1. * stabilization_attitude_eta.p * stabilization_smc_get_adaptation_value(fabs(slid_func.p), &abs_slid_func_prev.p, &stabilization_attitude_counter[0]))*
+                                STABILIZATION_ATTITUDE_FILT_DT;
+
+  stabilization_attitude_k.q = stabilization_attitude_k.q + ((stabilization_attitude_k.q <= stabilization_attitude_k_min.q) ? 
+                                stabilization_attitude_eta.q : -1. * stabilization_attitude_eta.q * stabilization_smc_get_adaptation_value(fabs(slid_func.q), &abs_slid_func_prev.q, &stabilization_attitude_counter[1]))*
+                                STABILIZATION_ATTITUDE_FILT_DT;       
+
+  // stabilization_attitude_k.r = stabilization_attitude_k.r * stabilization_attitude_eta.r * 
+  //                              -stabilization_smc_get_adaptation_value(f_abs(slid_func.r), &stabilization_attitude_counter[2]);   
+
+  slid_contr_incr.p = -( h.p + stabilization_attitude_k.p * tanh( slid_func.p ) ) * 
+                        stabilization_attitude_inv_input_distr.p / stabilization_attitude_lambda_1.p;
+  slid_contr_incr.q = -( h.q + stabilization_attitude_k.q * tanh( slid_func.q ) ) * 
+                        stabilization_attitude_inv_input_distr.q / stabilization_attitude_lambda_1.q;
   // slid_contr_incr.r = -(h.r + stabilization_attitude_k.q * stabilization_smc_sign(slid_func.r))
   //                     * STABILIZATION_ATTITUDE_INV_INPUT_DISTR_R;
 
   u.p = filt_u_act.p + slid_contr_incr.p;
   u.q = filt_u_act.q + slid_contr_incr.q;
   // u.r = filt_u_act.r + slid_contr_incr.r;
-
-
-  // h.p = STABILIZATION_ATTITUDE_REF_ERR_P * att_err.phi + STABILIZATION_ATTITUDE_REF_RATE_P * rate_err.p;
-  // h.q = STABILIZATION_ATTITUDE_REF_ERR_Q * att_err.theta + STABILIZATION_ATTITUDE_REF_RATE_Q * rate_err.q;
 
   // u.p = filt_u_act.p + (stabilization_attitude_inv_input_distr.p * (h.p - filt_ang_rate_dot.p));
   // u.q = filt_u_act.q + (stabilization_attitude_inv_input_distr.q * (h.q - filt_ang_rate_dot.q));

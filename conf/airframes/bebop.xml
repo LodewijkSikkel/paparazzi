@@ -27,9 +27,7 @@
 
   <modules main_freq="512">
     <load name="send_imu_mag_current.xml"/>
-<!--     <load name="file_logger.xml">
-      <define name="FILE_LOGGER_PATH" value="\\\"/data/ftp/internal_000/\\\""/>
-    </load> -->
+    <load name="doublet_module.xml"/>
   </modules>
 
   <commands>
@@ -140,9 +138,12 @@
     <define name="FILT_OMEGA_R" value="20." unit="rad/s"/>
 
     <!-- SMC --> 
-    <define name="DEADBAND_TAU" value="0.4"/>
-    <define name="LAMBDA_0" value="{ 10., 10., 0. }"/>
+    <define name="DEADBAND_TAU" value="1."/>
+    <define name="LAMBDA_0" value="{ 5., 5., 0. }"/>
     <define name="K" value="{ 30., 30., 0. }"/>
+    <define name="K_MIN" value="{ 30., 30., 0. }"/>
+    <define name="ETA" value="{ 300., 300., 0. }"/>
+    <define name="N" value="10"/>
 
     <!-- INDI -->
     <define name="REF_ERR_P" value="130.0"/>
