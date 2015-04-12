@@ -6,6 +6,15 @@
         Doublet manoeuver
     </description>
   </doc>
+
+  <settings>
+    <dl_settings>
+  <dl_settings NAME="doublet">
+        <dl_setting var="doublet_setpoint.time_1" min="0" step="1" max="2000" module="testing/doublet_module" shortname="time_1" param="DOUBLET_TIME_1"/>
+        <dl_setting var="doublet_setpoint.time_2" min="0" step="1" max="2000" module="testing/doublet_module" shortname="time_2" param="  DOUBLET_TIME_2"/>
+    </dl_settings>    </dl_settings>
+  </settings>
+
   <header>
     <file name="doublet_module.h"/>
   </header>

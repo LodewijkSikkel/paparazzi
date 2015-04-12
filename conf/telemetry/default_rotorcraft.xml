@@ -95,9 +95,9 @@
       <message name="ROTORCRAFT_STATUS" period="1.2"/>
       <message name="DL_VALUE"          period="0.5"/>
       <message name="ALIVE"             period="0.9"/>
-      <message name="STAB_ATTITUDE"     period=".03"/>
-      <message name="STAB_ATTITUDE_REF" period=".03"/>
-      <message name="STAB_ATTITUDE_SMC"	period=".03"/>
+      <!--message name="STAB_ATTITUDE"     period=".03"/-->
+      <!--message name="STAB_ATTITUDE_REF" period=".03"/-->
+      <message name="STAB_ATTITUDE_SMC"	period=".01"/>
     </mode>
 
     <mode name="vert_loop" key_press="v">

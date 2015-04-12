@@ -52,14 +52,15 @@
 #define STABILIZATION_ATTITUDE_FILT_DT ( 1 / 512. )
 
 struct FloatEulers *att_float; 
-struct FloatEulers att_err;
+struct FloatEulers att_err_f;
+struct Int32Quat att_err;
 
 struct FloatRates *rate_float;
 struct FloatRates rate_err;
 
 abi_event rpm_ev;
 float rpm_scaled[ACTUATORS_NB];
-static void rpm_cb(uint8_t sender_id, const uint16_t *rpm, const uint8_t *count);
+static void rpm_cb(uint8_t sender_id, uint16_t *rpm, uint8_t count);
 
 #define MOTOR_SCALING_VALUE ( 1. / MOTOR_MIXING_NB_MOTOR ) 
 
@@ -289,14 +290,14 @@ static void stabilization_input_filter(void)
   _v = _v < _min ? _min : _v > _max ? _max : _v; \
 } 
 
-static void rpm_cb(uint8_t sender_id, const uint16_t *rpm, const uint8_t *count)
+static void rpm_cb(uint8_t sender_id, uint16_t *rpm, uint8_t count)
 {
   /** index 0: top right motor
    *  index 1: top left motor
    *  index 2: bottom left motor
    *  index 3: bottom right motor 
    */
-  for (uint8_t i = 0; i < *count; i++) {
+  for (uint8_t i = 0; i < count; i++) {
     rpm_scaled[i] = (rpm[i] - get_servo_min(i));
     rpm_scaled[i] *= (MAX_PPRZ / (float)(get_servo_max(i)-get_servo_min(i)));
   }
@@ -309,8 +310,6 @@ static float stabilization_smc_sign(float value)
 
 static int8_t stabilization_smc_get_adaptation_value(float abs_value, float *abs_value_prev, uint8_t* counter)
 {
-  printf("%.4f, %.4f, %d\n", abs_value, *abs_value_prev, *counter);
-
   // The previous sample as well as the current sample lie within the boundary
   if ( abs_value <= stabilization_attitude_deadband_tau && 
         *abs_value_prev <= stabilization_attitude_deadband_tau ) {
@@ -345,17 +344,22 @@ static void stabilization_attitude_cmd(void) {
   stabilization_input_filter();
 
   // Compute the rate feedback
-  h.p = stabilization_attitude_lambda_0.p * stateGetBodyRates_f()->p
-        + stabilization_attitude_lambda_1.p * filt_ang_rate_dot.p;
-  h.q = stabilization_attitude_lambda_0.q * stateGetBodyRates_f()->q
-        + stabilization_attitude_lambda_1.q * filt_ang_rate_dot.q;
+  // h.p = stabilization_attitude_lambda_0.p * stateGetBodyRates_f()->p
+  //       + stabilization_attitude_lambda_1.p * filt_ang_rate_dot.p;
+  // h.q = stabilization_attitude_lambda_0.q * stateGetBodyRates_f()->q
+  //       + stabilization_attitude_lambda_1.q * filt_ang_rate_dot.q;
   // h.r = stabilization_attitude_lambda_0.r * filt_ang_rate.r
   //       + stabilization_attitude_lambda_1.r * filt_ang_rate_dot.r;
 
-  slid_func.p = stabilization_attitude_lambda_0.p * att_err.phi
-                + stabilization_attitude_lambda_1.p * rate_float->p;
-  slid_func.q = stabilization_attitude_lambda_0.q * att_err.theta
-                + stabilization_attitude_lambda_1.q * rate_float->q;
+  h.p = 1000. * QUAT1_FLOAT_OF_BFP(att_err.qx) - 50. * stateGetBodyRates_f()->p;
+  h.q = 1000. * QUAT1_FLOAT_OF_BFP(att_err.qy) - 50. * stateGetBodyRates_f()->q;
+  // h.r = reference_acceleration.err_r * QUAT1_FLOAT_OF_BFP(att_err->qz)
+  //                       - reference_acceleration.rate_r * stateGetBodyRates_f()->r;
+
+  // slid_func.p = stabilization_attitude_lambda_0.p * att_err.phi
+  //               + stabilization_attitude_lambda_1.p * rate_float->p;
+  // slid_func.q = stabilization_attitude_lambda_0.q * att_err.theta
+  //               + stabilization_attitude_lambda_1.q * rate_float->q;
   // slid_func.r = stabilization_attitude_lambda_0.r * -1 * att_err.psi
   //               + stabilization_attitude_lambda_1.r * -1 * rate_err.r;
 
@@ -366,32 +370,33 @@ static void stabilization_attitude_cmd(void) {
   /**
    * Gain adaption
    */
-  stabilization_attitude_k.p = stabilization_attitude_k.p + ((stabilization_attitude_k.p <= stabilization_attitude_k_min.p) ? 
-                                stabilization_attitude_eta.p : -1. * stabilization_attitude_eta.p * stabilization_smc_get_adaptation_value(fabs(slid_func.p), &abs_slid_func_prev.p, &stabilization_attitude_counter[0]))*
-                                STABILIZATION_ATTITUDE_FILT_DT;
+  // stabilization_attitude_k.p = stabilization_attitude_k.p + ((stabilization_attitude_k.p <= stabilization_attitude_k_min.p) ? 
+  //                               stabilization_attitude_eta.p : -1. * stabilization_attitude_eta.p * stabilization_smc_get_adaptation_value(fabs(slid_func.p), &abs_slid_func_prev.p, &stabilization_attitude_counter[0]))*
+  //                               STABILIZATION_ATTITUDE_FILT_DT;
 
-  stabilization_attitude_k.q = stabilization_attitude_k.q + ((stabilization_attitude_k.q <= stabilization_attitude_k_min.q) ? 
-                                stabilization_attitude_eta.q : -1. * stabilization_attitude_eta.q * stabilization_smc_get_adaptation_value(fabs(slid_func.q), &abs_slid_func_prev.q, &stabilization_attitude_counter[1]))*
-                                STABILIZATION_ATTITUDE_FILT_DT;       
+  // stabilization_attitude_k.q = stabilization_attitude_k.q + ((stabilization_attitude_k.q <= stabilization_attitude_k_min.q) ? 
+  //                               stabilization_attitude_eta.q : -1. * stabilization_attitude_eta.q * stabilization_smc_get_adaptation_value(fabs(slid_func.q), &abs_slid_func_prev.q, &stabilization_attitude_counter[1]))*
+  //                               STABILIZATION_ATTITUDE_FILT_DT;       
 
   // stabilization_attitude_k.r = stabilization_attitude_k.r * stabilization_attitude_eta.r * 
   //                              -stabilization_smc_get_adaptation_value(f_abs(slid_func.r), &stabilization_attitude_counter[2]);   
 
-  slid_contr_incr.p = -( h.p + stabilization_attitude_k.p * tanh( slid_func.p ) ) * 
-                        stabilization_attitude_inv_input_distr.p / stabilization_attitude_lambda_1.p;
-  slid_contr_incr.q = -( h.q + stabilization_attitude_k.q * tanh( slid_func.q ) ) * 
-                        stabilization_attitude_inv_input_distr.q / stabilization_attitude_lambda_1.q;
+  // slid_contr_incr.p = -( h.p + stabilization_attitude_k.p * tanh( slid_func.p ) ) * 
+  //                       stabilization_attitude_inv_input_distr.p / stabilization_attitude_lambda_1.p;
+  // slid_contr_incr.q = -( h.q + stabilization_attitude_k.q * tanh( slid_func.q ) ) * 
+  //                       stabilization_attitude_inv_input_distr.q / stabilization_attitude_lambda_1.q;
   // slid_contr_incr.r = -(h.r + stabilization_attitude_k.q * stabilization_smc_sign(slid_func.r))
   //                     * STABILIZATION_ATTITUDE_INV_INPUT_DISTR_R;
 
-  u.p = filt_u_act.p + slid_contr_incr.p;
-  u.q = filt_u_act.q + slid_contr_incr.q;
+  u.p = filt_u_act.p + stabilization_attitude_inv_input_distr.p * (h.p - filt_ang_rate_dot.p);
+  u.q = filt_u_act.q + stabilization_attitude_inv_input_distr.q * (h.q - filt_ang_rate_dot.q);
+  // indi_du.r = inv_control_effectiveness.r * (angular_accel_ref.r - filtered_rate_deriv.r);
+
+  // u.p = filt_u_act.p + slid_contr_incr.p;
+  // u.q = filt_u_act.q + slid_contr_incr.q;
   // u.r = filt_u_act.r + slid_contr_incr.r;
 
-  // u.p = filt_u_act.p + (stabilization_attitude_inv_input_distr.p * (h.p - filt_ang_rate_dot.p));
-  // u.q = filt_u_act.q + (stabilization_attitude_inv_input_distr.q * (h.q - filt_ang_rate_dot.q));
-
-  u.r = STABILIZATION_ATTITUDE_PSI_PGAIN * -att_err.psi + STABILIZATION_ATTITUDE_PSI_DGAIN * rate_err.r;
+  u.r = STABILIZATION_ATTITUDE_PSI_PGAIN * -att_err_f.psi + STABILIZATION_ATTITUDE_PSI_DGAIN * rate_err.r;
 
   BOUND_CONTROLS(u.p, -4500., 4500.);
   BOUND_CONTROLS(u.q, -4500., 4500.);
@@ -413,7 +418,7 @@ static void stabilization_attitude_cmd(void) {
 void stabilization_attitude_run(bool_t  in_flight)
 {
   /* Update the reference trajectory generator */
-  stabilization_attitude_ref_update();
+  // stabilization_attitude_ref_update();
 
   /* Propagate the second order filter on the gyroscopes */
   stabilization_rate_filter();
@@ -421,8 +426,11 @@ void stabilization_attitude_run(bool_t  in_flight)
   /* Compute feedback */
   /* attitude error */
   att_float = stateGetNedToBodyEulers_f();
-  EULERS_DIFF(att_err, *att_float, stab_att_sp_euler); /* c = a - b */
-  FLOAT_ANGLE_NORMALIZE(att_err.psi);
+  EULERS_DIFF(att_err_f, *att_float, stab_att_sp_euler); /* c = a - b */
+  FLOAT_ANGLE_NORMALIZE(att_err_f.psi);
+
+  struct Int32Quat *att_quat = stateGetNedToBodyQuat_i();
+  INT32_QUAT_INV_COMP(att_err, *att_quat, stab_att_sp_quat);
 
   /* rate error */
   rate_float = stateGetBodyRates_f();

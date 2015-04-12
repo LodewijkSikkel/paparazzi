@@ -22,8 +22,7 @@ endif
   ifneq ($(TOOLCHAIN),)
     PREFIX=$(shell dirname $(TOOLCHAIN))/bin/arm-none-linux-gnueabi
   endif
-endif
-endif
+#endif
 
 # if toolchain could not be found, print some useful info
 ifeq ($(shell which $(PREFIX)-gcc),)
@@ -36,7 +35,7 @@ ifeq ($(shell which $(PREFIX)-gcc),)
 #else
   # this was previously explicitly added, but shouln't be needed...
   #CFLAGS += -I/usr/arm-linux-gnueabi/include
-#endif
+endif
 
 CC   = $(PREFIX)-gcc
 LD   = $(PREFIX)-gcc

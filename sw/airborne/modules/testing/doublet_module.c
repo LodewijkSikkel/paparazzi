@@ -21,12 +21,26 @@
 // Own header
 #include "doublet_module.h"
 
+// C headers
+#include <stdio.h>
+
 // Paparazzi headers
 #include "autopilot.h"
+
 #include "firmwares/rotorcraft/guidance/guidance_v.h"
 #include "firmwares/rotorcraft/stabilization/stabilization_attitude.h"
 
+#include "mcu_periph/sys_time.h"
+
 #define deg2rad M_PI/180.
+
+#ifndef DOUBLET_TIME_1
+#define DOUBLET_TIME_1 100
+#endif 
+
+#ifndef DOUBLET_TIME_2
+#define DOUBLET_TIME_2 200
+#endif 
 
 /* Initialize a timer */
 uint32_t time_cur;
@@ -72,44 +86,50 @@ void guidance_h_module_run(bool_t in_flight)
 
 void doublet_module_init(void)
 {
-  doublet_setpoint.t_mill_first = 100;
-  doublet_setpoint.t_mill_second = 100;
+  doublet_setpoint.time_1 = DOUBLET_TIME_1;
+  doublet_setpoint.time_2 = DOUBLET_TIME_2;
 }
 
 void doublet_module_start(void) 
 {
+  printf("The start function is called.\n");
 }
 
 void doublet_module_run(void)
 {
   /* Check if we are in the correct AP_MODE before setting commands */
-  if (autopilot_mode != AP_MODE_MODULE) {
+  if (autopilot_mode != AP_MODE_MODULE) 
+  {
+  	time_cur = get_sys_time_msec();
+  	time_prev = time_cur;
     return;
   }
 
   /* The module runs on the event loop, implying that the time increment
    * of each passing is 1/512s \approx 2ms
    *
-   * TODO: Standardize the code
+   * TODO: Standardize the code and allow for multiple runs 
    */
-  time_cur = get_sys_time_msec();
-  time_prev = time_cur;
-  while (( time_cur - time_prev) < doublet_setpoint.t_mill_first)
-  {
-  	doublet_setpoint.cmd.phi = 10 * deg2rad;
-  	time_cur = get_sys_time_msec();
-  }
+  
+  printf("diff: %d\n", (time_cur - time_prev));
 
-  time_cur = get_sys_time_msec();
-  time_prev = time_cur;
-  while (( time_cur - time_prev) < doublet_setpoint.t_mill_second)
+  if ((time_cur - time_prev) < doublet_setpoint.time_1) 
   {
-  	doublet_setpoint.cmd.phi = -10 * deg2rad;
-  	time_cur = get_sys_time_msec();
+  	doublet_setpoint.cmd.phi = ANGLE_BFP_OF_REAL(10 * deg2rad);	
+  } 
+  else if ((time_cur - time_prev) < (doublet_setpoint.time_1 + doublet_setpoint.time_1))
+  {
+  	doublet_setpoint.cmd.phi = ANGLE_BFP_OF_REAL(-10 * deg2rad);
   }
+  else
+  {
+    doublet_setpoint.cmd.phi = 0;
+  }
+ 
+  time_cur = get_sys_time_msec();
 }
 
 void doublet_module_stop(void) 
 {
-
+  printf("The stop function is called.\n");
 }

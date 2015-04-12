@@ -47,8 +47,4 @@ The basis of steering is the standard signs of aerospace convention
       <field name="mode" value="Fit(mode,-127,126,0,2)"/>
     </message>
   </messages>
-<<<<<<< HEAD
 </joystick>
-=======
-</joystick>
->>>>>>> origin/master

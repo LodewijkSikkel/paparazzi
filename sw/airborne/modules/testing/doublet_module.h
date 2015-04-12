@@ -36,8 +36,8 @@
 
 /* The opticflow stabilization */
 struct doublet_setpoint_t {
-  uint16_t t_mill_first;        ///< Duration in milliseconds of first step input (max: 65536 millseconds)
-  int32_t t_mill_second;        ///< Duration in milliseconds of second step input (max: 65536 millseconds)
+  uint16_t time_1;        ///< Duration in milliseconds of first step input (max: 65536 millseconds)
+  int32_t time_2;        ///< Duration in milliseconds of second step input (max: 65536 millseconds)
   struct Int32Eulers cmd;   	///< The commands that are send to the stabilization loop
 };
 extern struct doublet_setpoint_t doublet_setpoint;
