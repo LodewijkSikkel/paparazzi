@@ -24,12 +24,13 @@
       <define name="INDI_RPM_FEEDBACK" value="1"/>
       <define name="USE_FULL_INDI" value="TRUE"/>
     </subsystem>
-    <subsystem name="ahrs" type="int_cmpl_quat"/>
+    <subsystem name="ahrs" type="float_cmpl_quat"/>
     <subsystem name="ins" type="extended"/>
   </firmware>
 
   <modules main_freq="512">
     <load name="send_imu_mag_current.xml"/>
+    <load name="doublet_module.xml"/>
   </modules>
 
   <commands>
@@ -237,8 +238,8 @@
   <section name="AUTOPILOT">
     <define name="MODE_STARTUP" value="AP_MODE_NAV"/>
     <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/>
-    <define name="MODE_AUTO1" value="AP_MODE_ATTITUDE_Z_HOLD"/>
-    <define name="MODE_AUTO2" value="AP_MODE_NAV"/>
+    <define name="MODE_AUTO1" value="AP_MODE_ATTITUDE_DIRECT"/>
+    <define name="MODE_AUTO2" value="AP_MODE_MODULE"/>
   </section>
 
   <section name="BAT">

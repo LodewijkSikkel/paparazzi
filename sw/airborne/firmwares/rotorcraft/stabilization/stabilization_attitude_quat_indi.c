@@ -111,7 +111,7 @@ static const int32_t pitch_coef[MOTOR_MIXING_NB_MOTOR]  = MOTOR_MIXING_PITCH_COE
 static const int32_t yaw_coef[MOTOR_MIXING_NB_MOTOR]    = MOTOR_MIXING_YAW_COEF;
 
 abi_event rpm_ev;
-static void rpm_cb(uint8_t sender_id, const uint16_t *rpm, const uint8_t *count);
+static void rpm_cb(uint8_t sender_id, uint16_t *rpm, uint8_t count);
 
 #define STABILIZATION_INDI_FILT_OMEGA2 (STABILIZATION_INDI_FILT_OMEGA*STABILIZATION_INDI_FILT_OMEGA)
 
@@ -147,7 +147,7 @@ static void send_ahrs_ref_quat(struct transport_tx *trans, struct link_device *d
 static void send_att_indi(struct transport_tx *trans, struct link_device *dev)
 {
   pprz_msg_send_STAB_ATTITUDE_INDI(trans, dev, AC_ID,
-                                   &G1[0][0],
+                                   &stab_att_sp_euler.phi,
                                    &G1[0][1],
                                    &G1[0][2],
                                    &G1[0][3],
@@ -270,8 +270,7 @@ void stabilization_attitude_set_failsafe_setpoint(void)
 void stabilization_attitude_set_rpy_setpoint_i(struct Int32Eulers *rpy)
 {
   // stab_att_sp_euler.psi still used in ref..
-  memcpy(&stab_att_sp_euler, rpy, sizeof(struct Int32Eulers));
-
+  EULERS_FLOAT_OF_BFP(stab_att_sp_euler, *rpy);
   quat_from_rpy_cmd_i(&stab_att_sp_quat, &stab_att_sp_euler);
 }
 
@@ -519,9 +518,9 @@ void filter_estimation_indi(void) {
   ratedotdot_estimation.r = -ratedot_estimation.r * 2*IDENTIFICATION_FILT_ZETA*IDENTIFICATION_INDI_FILT_OMEGA + (stateGetBodyRates_f()->r - rate_estimation.r)*IDENTIFICATION_INDI_FILT_OMEGA2;
 }
 
-static void rpm_cb(uint8_t sender_id, const uint16_t *rpm, const uint8_t *count)
+static void rpm_cb(uint8_t sender_id, uint16_t *rpm, uint8_t count)
 {
-  for(int i = 0; i < *count; i++) {
+  for(int i = 0; i < count; i++) {
     act_obs_rpm[i] = (rpm[i] - get_servo_min(i));
     act_obs_rpm[i] *= (MAX_PPRZ / (float)(get_servo_max(i)-get_servo_min(i)));
   }
