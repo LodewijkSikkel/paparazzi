@@ -184,7 +184,11 @@
     <field name="segment_north_2" type="float" unit="m"/>
   </message>
 
-  <!-- ID 23 is free -->
+  <message name="TEST_EKF_DEBUG" id="23">
+    <field name="val1" type="float"/>
+    <field name="val2" type="float"/>
+    <field name="mat" type="float[]"/>
+  </message>
   <!-- ID 24 is free -->
 
   <message name="SVINFO" id="25">

@@ -417,6 +417,26 @@ test_imu.srcs   += state.c
 test_imu.srcs   += test/subsystems/test_imu.c
 test_imu.srcs   += math/pprz_geodetic_int.c math/pprz_geodetic_float.c math/pprz_geodetic_double.c math/pprz_trig_int.c math/pprz_orientation_conversion.c math/pprz_algebra_int.c math/pprz_algebra_float.c math/pprz_algebra_double.c
 
+#
+# test_ekf
+#
+# add imu subsystem to test_ekf target!
+#
+# configuration
+#   SYS_TIME_LED
+#   MODEM_PORT
+#   MODEM_BAUD
+#
+test_ekf.ARCHDIR = $(ARCH)
+test_ekf.CFLAGS += $(COMMON_TEST_CFLAGS)
+test_ekf.srcs   += $(COMMON_TEST_SRCS)
+test_ekf.CFLAGS += $(COMMON_TELEMETRY_CFLAGS)
+test_ekf.srcs   += $(COMMON_TELEMETRY_SRCS)
+test_ekf.srcs   += mcu_periph/i2c.c $(SRC_ARCH)/mcu_periph/i2c_arch.c
+test_ekf.srcs   += state.c
+test_ekf.srcs   += test/subsystems/test_ekf.c
+test_ekf.srcs   += math/pprz_geodetic_int.c math/pprz_geodetic_float.c math/pprz_geodetic_double.c math/pprz_trig_int.c math/pprz_orientation_conversion.c math/pprz_algebra_int.c math/pprz_algebra_float.c math/pprz_algebra_double.c
+test_ekf.LDFLAGS += -lc
 
 #
 # test_ahrs
