@@ -505,19 +505,18 @@ gboolean timeout_transmit_callback(gpointer data) {
        */
       int16_t mask = (1 << 10)-1;
       
-      int32_t pos_xyz = ((pos.x*100.0) & mask) << 22; // bits 31-22 x position in cm
-      pos_xyz |= ((pos.y*100) & mask) << 12; // bits 21-12 y position in cm
-      pos_xyz |= ((pos.z*100) & mask) << 2; // bits 11-2 z position in cm
+      int32_t pos_xyz = ((int32_t)(pos.x*100.0) & mask) << 22; // bits 31-22 x position in cm
+      pos_xyz |= ((int32_t)(pos.y*100.0) & mask) << 12; // bits 21-12 y position in cm
+      pos_xyz |= ((int32_t)(pos.z*100.0) & mask) << 2; // bits 11-2 z position in cm
       // bits 1 and 0 are free
 
-      int32_t speed_xy = ((speed.x*100.0) & mask) << 22; // bits 31-22 speed x in cm/s
-      speed_xy |= ((speed.x*100.0) & mask) << 12; // bits 21-12 speed y in cm/s
-      speed_xy |= ((heading*100.0) & mask) << 2; // bits 11-2 heading in rad*1e2
+      int32_t speed_xy = ((int32_t)(speed.x*100.0) & mask) << 22; // bits 31-22 speed x in cm/s
+      speed_xy |= ((int32_t)(speed.x*100.0) & mask) << 12; // bits 21-12 speed y in cm/s
+      speed_xy |= ((int32_t)(heading*100.0) & mask) << 2; // bits 11-2 heading in rad*1e2
 
-      IvySendMsg("0 REMOTE_GPS_SMALL %d %d %d",
+      IvySendMsg("0 REMOTE_GPS_SMALL %d %d %d", aircrafts[rigidBodies[i].id].ac_id, // uint8 rigid body ID (1 byte)
         pos_xyz, //int32 ENU X, Y and Z in CM (4 bytes)
-        speed_xy, //int32 ENU velocity X, Y in cm/s and heading in rad*1e2 (4 bytes)
-        aircrafts[rigidBodies[i].id].ac_id); // uint8 rigid body ID (1 byte)
+        speed_xy); //int32 ENU velocity X, Y in cm/s and heading in rad*1e2 (4 bytes)   
     }
     else {
       IvySendMsg("0 REMOTE_GPS %d %d %d %d %d %d %d %d %d %d %d %d %d %d", aircrafts[rigidBodies[i].id].ac_id,
