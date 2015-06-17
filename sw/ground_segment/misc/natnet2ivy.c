@@ -500,8 +500,8 @@ gboolean timeout_transmit_callback(gpointer data) {
     // Transmit the REMOTE_GPS packet on the ivy bus (either small or big)
     if(small_packets) {
       /* The GPS messages are most likely too large to be send over either the datalink
-       * and thus the local position is compressed in a single integer. The local position 
-       * is an int32 and the 10 LSBs of each axis is compressed into a single integer.
+       * The local position is an int32 and the 10 LSBs of each axis is compressed into 
+       * a single integer.
        */
       int16_t mask = (1 << 10)-1;
       
