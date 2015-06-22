@@ -33,6 +33,12 @@
 #include "std.h"
 #define GPS_NB_CHANNELS 0
 
+struct RigidBody {
+  int id;                           ///< Rigid body ID from the tracking system
+  int16_t x, y, z;                    ///< Rigid body x, y and z coordinates in meters (note y and z are swapped)
+  float qx, qy, qz, qw;             ///< Rigid body qx, qy, qz and qw rotations (note qy and qz are swapped)
+  int nMarkers;  
+
 extern bool_t gps_available;
 extern void parse_gps_datalink(uint8_t numsv, int32_t ecef_x, int32_t ecef_y, int32_t ecef_z, int32_t lat, int32_t lon,
                                int32_t alt,
