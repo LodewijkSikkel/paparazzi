@@ -29,30 +29,22 @@
 
 #include "subsystems/gps.h"
 
-#ifdef GPS_DATALINK_SMALL
-#ifndef LOCAL_ECEF_ORIGIN_X
+#ifdef GPS_USE_DATALINK_SMALL
+#ifndef GPS_LOCAL_ECEF_ORIGIN_X
 #error Local x coordinate in ECEF of the remote GPS required
 #endif
 
-#ifndef LOCAL_ECEF_ORIGIN_Y
+#ifndef GPS_LOCAL_ECEF_ORIGIN_Y
 #error Local y coordinate in ECEF of the remote GPS required
 #endif
 
-#ifndef LOCAL_ECEF_ORIGIN_Z
+#ifndef GPS_LOCAL_ECEF_ORIGIN_Z
 #error Local z coordinate in ECEF of the remote GPS required
 #endif
 
-#ifndef LOCAL_ECEF_ORIGIN_OFFSET
-#error Local offset angle required
-#endif
-
 struct EcefCoor_i tracking_ecef;
-tracking_ecef.x = LOCAL_ECEF_ORIGIN_X;
-tracking_ecef.y = LOCAL_ECEF_ORIGIN_Y;
-tracking_ecef.z = LOCAL_ECEF_ORIGIN_Z;
 
 struct LtpDef_i tracking_ltp;
-ltp_def_from_ecef_i(&tracking_ltp, &tracking_ecef);
 
 struct EnuCoor_i enu_pos, enu_speed;
  
@@ -70,40 +62,70 @@ void gps_impl_init(void)
   gps_available = FALSE;
   gps.gspeed = 700; // To enable course setting
   gps.cacc = 0; // To enable course setting
+
+  tracking_ecef.x = GPS_LOCAL_ECEF_ORIGIN_X;
+  tracking_ecef.y = GPS_LOCAL_ECEF_ORIGIN_Y;
+  tracking_ecef.z = GPS_LOCAL_ECEF_ORIGIN_Z;
+
+  ltp_def_from_ecef_i(&tracking_ltp, &tracking_ecef);
 }
 
-#ifdef GPS_DATALINK_SMALL
+#ifdef GPS_USE_DATALINK_SMALL
 // Parse the REMOTE_GPS_SMALL datalink packet
-void parse_gps_datalink_small(uint32_t pos_xyz, uint32_t speed_xy) {
+void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_xy) {
  
   // Position in ENU coordinates
-  int16_t mask = (1 << 10)-1;
-
-  enu_pos.x = (pos_xyz & (mask << 22)) >> 22; // bits 31-22 x position in cm
-  enu_pos.y = (pos_xyz & (mask << 12)) >> 12; // bits 21-12 y position in cm
-  enu_pos.z = (pos_xyz & (mask << 2)) >> 2; // bits 11-2 z position in cm
+  enu_pos.x = (int32_t)((pos_xyz >> 22) & 0x3FF); // bits 31-22 x position in cm
+  if (enu_pos.x & 0x200)
+    enu_pos.x |= 0xFFFFFC00; // fix for twos complements
+  enu_pos.y = (int32_t)((pos_xyz >> 12) & 0x3FF); // bits 21-12 y position in cm
+  if (enu_pos.y & 0x200)
+    enu_pos.y |= 0xFFFFFC00; // fix for twos complements
+  enu_pos.z = (int32_t)(pos_xyz >> 2 & 0x3FF); // bits 11-2 z position in cm
   // bits 1 and 0 are free
 
   // Convert the ENU coordinates to ECEF
-  ecef_of_enu_point_i(&ecef_pos ,&tracking_ltp ,&pos);
+  ecef_of_enu_point_i(&ecef_pos, &tracking_ltp, &enu_pos);
   gps.ecef_pos = ecef_pos;
 
   lla_of_ecef_i(&lla_pos, &ecef_pos);
   gps.lla_pos = lla_pos;
 
-  enu_speed.x = (speed_xy & (mask << 22)) >> 22; // bits 31-22 speed x in cm/s
-  enu_speed.y = (speed_xy & (mask << 12)) >> 12; // bits 21-12 speed y in cm/s
+  enu_speed.x = (int32_t)((speed_xy >> 22) & 0x3FF); // bits 31-22 speed x in cm/s
+  if (enu_pos.x & 0x200)
+    enu_speed.x |= 0xFFFFFC00; // fix for twos complements
+  enu_speed.y = (int32_t)((speed_xy >> 12) & 0x3FF); // bits 21-12 speed y in cm/s
+  if (enu_speed.y & 0x200)
+    enu_speed.y |= 0xFFFFFC00; // fix for twos complements
   enu_speed.z = 0;
 
-  ecef_of_enu_vect_d(&gps.ecef_vel ,&tracking_ltp ,&enu_speed);
+  ecef_of_enu_vect_i(&gps.ecef_vel ,&tracking_ltp ,&enu_speed);
 
-  gps.hmsl = tracking_ltp.hsml+pos.z/10; // TODO: try to compensate for the loss in accuracy
+  gps.hmsl = tracking_ltp.hmsl+enu_pos.z*10; // TODO: try to compensate for the loss in accuracy
   
-  gps.course = (speed_xy & (mask << 2)) >> 2; // bits 11-2 heading in rad*1e2
-  gps.course = gps.course*1e5; // heading in rad*1e7
+  gps.course = (int32_t)((speed_xy >> 2) & 0x3FF); // bits 11-2 heading in rad*1e2
+  if (gps.course & 0x200)
+    gps.course |= 0xFFFFFC00; // fix for twos complements
+  gps.course *= 1e5;
+  gps.num_sv = num_sv;
   gps.tow = 0; // set time-of-weak to 0
   gps.fix = GPS_FIX_3D; // set 3D fix to true
   gps_available = TRUE; // set GPS available to true
+
+#if GPS_USE_LATLONG
+  // Computes from (lat, long) in the referenced UTM zone
+  struct LlaCoor_f lla_f;
+  LLA_FLOAT_OF_BFP(lla_f, gps.lla_pos);
+  struct UtmCoor_f utm_f;
+  utm_f.zone = nav_utm_zone0;
+  // convert to utm
+  utm_of_lla_f(&utm_f, &lla_f);
+  // copy results of utm conversion
+  gps.utm_pos.east = utm_f.east * 100;
+  gps.utm_pos.north = utm_f.north * 100;
+  gps.utm_pos.alt = gps.lla_pos.alt;
+  gps.utm_pos.zone = nav_utm_zone0;
+#endif
 }
 #endif
 

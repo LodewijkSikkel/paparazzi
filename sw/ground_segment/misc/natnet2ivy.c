@@ -500,28 +500,24 @@ gboolean timeout_transmit_callback(gpointer data) {
     // Transmit the REMOTE_GPS packet on the ivy bus (either small or big)
     if(small_packets) {
       /* The GPS messages are most likely too large to be send over either the datalink
-       * The local position is an int32 and the 11 LSBs of the x and y axis are compressed into 
+       * The local position is an int32 and the 10 LSBs of the x and y axis are compressed into 
        * a single integer. The z axis is considered unsigned and only the latter 10 LSBs are
        * used.
        */
-      // uint32_t pos_xyz = (((uint32_t)(pos.x*100.0)) & 0x7FF) << 21; // bits 31-21 x position in cm
-      uint32_t pos_xyz = (((uint32_t)(pos.y*100.0)) & 0x3FF) << 10; // bits 20-10 y position in cm
-      // pos_xyz |= (int32_t)(pos.z*100.0) & 0x3FF; // bits 9-0 z position in cm
+      uint32_t pos_xyz = (((uint32_t)(pos.x*100.0)) & 0x3FF) << 22; // bits 31-22 x position in cm
+      pos_xyz |= (((uint32_t)(pos.y*100.0)) & 0x3FF) << 12; // bits 21-12 y position in cm
+      pos_xyz |= (((uint32_t)(pos.z*100.0)) & 0x3FF) << 2; // bits 11-2 z position in cm
+      // bits 1 and 0 are free
 
-      printf("pos_xyz: %d (%d, %d, %d) -> (%d, %d, %d)\n", pos_xyz, 
-                                           (int32_t)(pos.x*100), (int32_t)(pos.y*100), (int32_t)(pos.z*100),
-                                           ((pos_xyz & (0x3FF << 21)) >> 21), // reconstruct the x value
-                                           (int32_t)(((pos_xyz & (0x400 << 10)) << 11) | ((pos_xyz & (0x7FF << 10)) >> 10)), // reconstruct the y value 
-                                            pos_xyz & 0x3FF); // reconstruct the z value
-
-      int32_t speed_xy = ((int32_t)(speed.x*100.0) & 0x7FF) << 21; // bits 31-21 speed x in cm/s
-      speed_xy |= ((int32_t)(speed.x*100.0) & 0x7FF) << 10; // bits 20-10 speed y in cm/s
-      speed_xy |= (int32_t)(heading*100.0) & 0x3FF; // bits 9-0 heading in rad*1e2 (The heading is already subsampled)
+      uint32_t speed_xy = (((uint32_t)(speed.x*100.0)) & 0x3FF) << 22; // bits 31-21 speed x in cm/s
+      speed_xy |= (((uint32_t)(speed.x*100.0)) & 0x3FF) << 12; // bits 20-10 speed y in cm/s
+      speed_xy |= (((uint32_t)(heading*100.0)) & 0x3FF) << 2; // bits 9-0 heading in rad*1e2 (The heading is already subsampled)
+      // bits 1 and 0 are free
 
       IvySendMsg("0 REMOTE_GPS_SMALL %d %d %d %d", aircrafts[rigidBodies[i].id].ac_id, // uint8 rigid body ID (1 byte)
         (uint8_t)rigidBodies[i].nMarkers, // status (1 byte)
-        pos_xyz, //int32 ENU X, Y and Z in CM (4 bytes)
-        speed_xy); //int32 ENU velocity X, Y in cm/s and heading in rad*1e2 (4 bytes)   
+        pos_xyz, //uint32 ENU X, Y and Z in CM (4 bytes)
+        speed_xy); //uint32 ENU velocity X, Y in cm/s and heading in rad*1e2 (4 bytes)   
     }
     else {
       IvySendMsg("0 REMOTE_GPS %d %d %d %d %d %d %d %d %d %d %d %d %d %d", aircrafts[rigidBodies[i].id].ac_id,
@@ -748,8 +744,6 @@ static void parse_options(int argc, char** argv) {
 
 int main(int argc, char** argv)
 {
-  printf("Test\n");
-
   // Set the default tracking system position and angle
   struct EcefCoor_d tracking_ecef;
   tracking_ecef.x = 3924304;
