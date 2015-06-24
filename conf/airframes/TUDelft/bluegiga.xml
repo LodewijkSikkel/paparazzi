@@ -90,20 +90,27 @@
     <define name="MAG_Z_CURRENT_COEF" value="-0.01935617335"/>
   </section>
 
- <section name="AUTOPILOT">
-   <define name="MODE_STARTUP" value="AP_MODE_NAV"/>
-   <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/>
-   <define name="MODE_AUTO1" value="AP_MODE_HOVER_Z_HOLD"/>
-   <define name="MODE_AUTO2" value="AP_MODE_NAV"/>
- </section>
+  <section name="GPS" prefix="GPS_">
+    <define name="USE_DATALINK_SMALL" value="1"/>
+    <define name="LOCAL_ECEF_ORIGIN_X" value="392430400"/>
+    <define name="LOCAL_ECEF_ORIGIN_Y" value="30036000"/>
+    <define name="LOCAL_ECEF_ORIGIN_Z" value="500216200"/>
+  </section>
 
- <section name="BAT">
-   <define name="MILLIAMP_AT_FULL_THROTTLE" value="14000"/>
-   <define name="CATASTROPHIC_BAT_LEVEL" value="3.0" unit="V"/>
-   <define name="CRITIC_BAT_LEVEL" value="3.3" unit="V"/>
+  <section name="AUTOPILOT">
+    <define name="MODE_STARTUP" value="AP_MODE_NAV"/>
+    <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/>
+    <define name="MODE_AUTO1" value="AP_MODE_HOVER_Z_HOLD"/>
+    <define name="MODE_AUTO2" value="AP_MODE_NAV"/>
+  </section>
+
+  <section name="BAT">
+    <define name="MILLIAMP_AT_FULL_THROTTLE" value="14000"/>
+    <define name="CATASTROPHIC_BAT_LEVEL" value="3.0" unit="V"/>
+    <define name="CRITIC_BAT_LEVEL" value="3.3" unit="V"/>
     <define name="LOW_BAT_LEVEL" value="3.5" unit="V"/>
     <define name="MAX_BAT_LEVEL" value="4.1" unit="V"/>
- </section>
+  </section>
 
   <section name="STABILIZATION_RATE" prefix="STABILIZATION_RATE_">
     <define name="SP_MAX_P" value="15000"/>
@@ -170,6 +177,7 @@
   </section>
 
   <section name="INS" prefix="INS_">
+    <define name="USE_GPS_ALT" value="1"/>
   </section>
 
  <section name="GUIDANCE_V" prefix="GUIDANCE_V_">
@@ -183,6 +191,7 @@
     <define name="H_X" value=" 0.47577"/>
     <define name="H_Y" value=" 0.11811"/>
     <define name="H_Z" value=" 0.87161"/>
+    <!--define name="USE_GPS_HEADING" value="1"/-->
   </section>
 
  <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
@@ -210,6 +219,7 @@
       <configure name="AHRS_PROPAGATE_FREQUENCY" value="500"/>
       <configure name="RADIO_CONTROL_LED" value="none"/>
       <define name="USE_PERSISTENT_SETTINGS" value="TRUE"/>
+      <configure name="USE_MAGNETOMETER" value="1"/>
     </target>
 
     <target name="nps" board="pc">
