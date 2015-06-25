@@ -45,7 +45,7 @@
 #include "subsystems/imu.h"
 #include "subsystems/abi.h"
 
-#define DT 1/512.
+#define DT 1./512.
 
 static inline void main_init(void);
 static inline void main_periodic_task(void);
@@ -58,12 +58,13 @@ static void ekf_measurement_update(void);
 
 static abi_event gyro_ev;
 static abi_event accel_ev;
-static void gyro_cb(uint8_t sender_id __attribute__((unused)),
-                    uint32_t stamp __attribute__((unused)),
-                    struct Int32Rates *gyro);
+struct FloatVect3 accel_m;
 static void accel_cb(uint8_t sender_id __attribute__((unused)),
                      uint32_t stamp __attribute__((unused)),
                      struct Int32Vect3 *accel);
+static void gyro_cb(uint8_t sender_id __attribute__((unused)),
+                    uint32_t stamp __attribute__((unused)),
+                    struct Int32Rates *gyro);
 
 struct StateVector {
   float phi; // rad
@@ -72,11 +73,11 @@ struct StateVector {
   // float v; // m/s
 };
 
-struct StateVector x; // state vector 
+struct StateVector x, x_hat; // state vector, prediction vector
 
 float P[2][2] = {
-  {1, 0},
-  {0, 1},
+  {10.,  0.},
+  { 0., 10.},
 };
 
 float F[2][2] = {
@@ -94,18 +95,18 @@ float H[2][2] = {
 float y[2]; // measurements (accelerometer measurements)
 
 float Q[2][2] = { // process noise
-  {.001,    0},
-  {   0, .001},
+  {1., 0.},
+  {0., 1.},
 };
 
 float R[2][2] = { // observation noise
-  {.001,    0},
-  {   0, .001},
+  {1., 0.},
+  {0., 1.},
 };
 
-float I[2][2] = { // process noise
-  {1, 0},
-  {0, 1},
+float I[2][2] = { // identity matrix
+  {1., 0.},
+  {0., 1.},
 };
 
 float FP[2][2], PF[2][2], P_hat[2][2]; 
@@ -118,26 +119,38 @@ static void accel_cb(uint8_t sender_id __attribute__((unused)),
                      uint32_t stamp __attribute__((unused)),
                      struct Int32Vect3 *accel)
 {
-  // TODO: Process the incoming accelerometer measurements
-  y[0] = ACCEL_FLOAT_OF_BFP(accel->x);
-  y[1] = ACCEL_FLOAT_OF_BFP(accel->y);
+  // Process the incoming accelerometer measurements
+  accel_m.x = ACCEL_FLOAT_OF_BFP(accel->x);
+  accel_m.y = ACCEL_FLOAT_OF_BFP(accel->y);
+
+  RunOnceEvery(10, DOWNLINK_SEND_IMU_ACCEL_SCALED(DefaultChannel, DefaultDevice,
+                                                  &accel->x,
+                                                  &accel->y,
+                                                  &accel->z);
+  );
 }
 
 static void gyro_cb(uint8_t sender_id __attribute__((unused)),
                     uint32_t stamp __attribute__((unused)),
                     struct Int32Rates *gyro)
 {
-	// TODO: Process the incoming gyro measurements
+	// Process the incoming gyro measurements
   u.p = RATE_FLOAT_OF_BFP(gyro->p);
   u.q = RATE_FLOAT_OF_BFP(gyro->q);
   u.r = RATE_FLOAT_OF_BFP(gyro->r);
+
+  RunOnceEvery(10, DOWNLINK_SEND_IMU_GYRO_SCALED(DefaultChannel, DefaultDevice,
+                                                 &gyro->p,
+                                                 &gyro->q,
+                                                 &gyro->r);
+  );
 }
 
 // Macro to return the transpose of a matrix
 static inline void matnn_transp(float (*mat_o)[2], float (*mat_i)[2], uint8_t m, uint8_t n) 
 {
-  for (int i = 0; i < m; i++) {
-    for (int j = 0; j < n; j++) {
+  for (int i = 0; i < m; i++) { // loop over the rows
+    for (int j = 0; j < n; j++) { // loop over the columns
       if (i != j)
         mat_o[j][i] = mat_i[i][j];
       mat_o[i][j] = mat_i[j][i];
@@ -293,12 +306,12 @@ static void matnn_cof_transp(float mat[][2],float det, uint8_t k)
 static void ekf_jac_f(void)
 {
   /* The elements of the Jacobian matrix that are zero by default are
-   * ignored
+   * ignored. Gravity is hardcoded
    */
-  F[0][0] = cos(x.phi)*tan(x.theta)*u.q-sin(x.phi)*tan(x.theta)*u.r;
+  F[0][0] = (cos(x.phi)*u.q-sin(x.phi)*u.r)*tan(x.theta);
   F[0][1] = 2*(sin(x.phi)*u.q+cos(x.phi)*u.r)/(cos(2*x.theta)+1);
   F[1][0] = -sin(x.phi)*u.q-cos(x.phi)*u.r;
-  // F[2][1] = -9.81*cos(x.theta); // gravity hardcoded
+  // F[2][1] = -9.81*cos(x.theta);
   // F[2][3] = u.r;
   // F[3][0] = 9.81*cos(x.phi)*cos(x.theta);
   // F[3][1] = -9.81*sin(x.phi)*sin(x.theta);
@@ -326,9 +339,8 @@ static void ekf_time_update(void)
   /* TODO: Predict the state update using the state propagation function
    * f() using the gyro measurements and estimate of the lumped drag term.
    */
-  x.phi += (1*u.p+sin(x.phi)*tan(x.theta)*u.q+cos(x.phi)*tan(x.theta)*u.r)*DT;
-
-  x.theta += (cos(x.phi)*u.q-sin(x.phi)*u.r)*DT;
+  x_hat.phi = x.phi+(1*u.p+(sin(x.phi)*u.q+cos(x.phi)*u.r)*tan(x.theta))*DT;
+  x_hat.theta = x.theta+(cos(x.phi)*u.q-sin(x.phi)*u.r)*DT;
 
   // x.u += (-9.81*sin(x.theta)+x.v*u.r)*DT;
 
@@ -359,8 +371,8 @@ static void ekf_measurement_update(void)
    * transformed states, by the output function h(), from the
    * measured accelerometer data.
    */
-  y[0] -= 9.81*sin(x.theta);
-  y[1] -= -9.81*sin(x.phi)*cos(x.theta);
+  y[0] = accel_m.x-9.81*sin(x.theta);
+  y[1] = accel_m.y-(-9.81*sin(x.phi)*cos(x.theta));
 
   /* TODO: Compute the residual covariance using the Jacobian matrix and
    * include the measurement noise covariance R
@@ -380,8 +392,8 @@ static void ekf_measurement_update(void)
 
   // TODO: Update the state estimate
   matnn_vmul(KY, K, y, 2, 2);
-  x.phi += KY[0];
-  x.theta += KY[1];
+  x.phi = x_hat.phi+KY[0];
+  x.theta = x_hat.theta+KY[1];
 
   // TODO: Update the covariance estimate
   matnn_mul(KH, K, H, 2, 2);
@@ -440,9 +452,9 @@ static inline void main_periodic_task(void)
       P_dl[k++] = P[i][j];
     }
   }
-  RunOnceEvery(50, {
+  RunOnceEvery(10, {
     DOWNLINK_SEND_TEST_EKF_DEBUG(DefaultChannel, DefaultDevice, &x.phi, &x.theta, 16, P_dl);
-  }); // called at about 10Hz
+  }); // called at about 50Hz
   
   RunOnceEvery(10, { LED_PERIODIC();}); // periodic led
 }

@@ -40,6 +40,9 @@
   </firmware>
 
   <firmware name="test_progs">
+    <target name="test_imu" board="lisa_mx_2.1">
+      <subsystem name="imu" type="aspirin_v2.2"/>
+    </target>
     <target name="test_ekf" board="lisa_mx_2.1">
       <subsystem name="imu" type="aspirin_v2.2"/>
     </target>
