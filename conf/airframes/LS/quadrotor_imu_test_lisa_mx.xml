@@ -45,6 +45,7 @@
     </target>
     <target name="test_ekf" board="lisa_mx_2.1">
       <subsystem name="imu" type="aspirin_v2.2"/>
+      <define name="AHRS_ALIGNER_LED" value="1"/>
     </target>
   </firmware>
 

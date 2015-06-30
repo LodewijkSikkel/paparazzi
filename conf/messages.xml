@@ -187,6 +187,8 @@
   <message name="TEST_EKF_DEBUG" id="23">
     <field name="val1" type="float"/>
     <field name="val2" type="float"/>
+    <field name="val3" type="float"/>
+    <field name="val4" type="float"/>
     <field name="mat" type="float[]"/>
   </message>
   <!-- ID 24 is free -->

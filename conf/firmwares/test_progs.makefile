@@ -435,6 +435,8 @@ test_ekf.srcs   += $(COMMON_TELEMETRY_SRCS)
 test_ekf.srcs   += mcu_periph/i2c.c $(SRC_ARCH)/mcu_periph/i2c_arch.c
 test_ekf.srcs   += state.c
 test_ekf.srcs   += test/subsystems/test_ekf.c
+test_ekf.srcs 	+= subsystems/ahrs/ahrs_aligner.c
+test_ekf.srcs 	+= test/subsystems/algebra.c
 test_ekf.srcs   += math/pprz_geodetic_int.c math/pprz_geodetic_float.c math/pprz_geodetic_double.c math/pprz_trig_int.c math/pprz_orientation_conversion.c math/pprz_algebra_int.c math/pprz_algebra_float.c math/pprz_algebra_double.c
 test_ekf.LDFLAGS += -lc
 
