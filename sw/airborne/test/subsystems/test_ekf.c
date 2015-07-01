@@ -41,6 +41,7 @@
 #include "mcu_periph/i2c.h"
 #include "messages.h"
 #include "math/pprz_algebra_int.h"
+#include "math/pprz_algebra_float.h"
 
 #include "subsystems/abi.h"
 #include "subsystems/ahrs/ahrs_aligner.h"
@@ -55,28 +56,31 @@ static inline void main_init(void);
 static inline void main_periodic_task(void);
 static inline void main_event_task(void);
 
-static void ekf_init(void);
-static void ekf_periodic_task(void);
-static void ekf_event_task(void);
+static inline void ekf_init(void);
+static inline void ekf_periodic_task(void);
+static inline void ekf_event_task(void);
 
 static abi_event gyro_ev;
+
 static abi_event accel_ev;
+
 struct FloatVect3 accel_m;
-static abi_event aligner_ev;
-struct FloatRates gyro_bias;
+
+// static abi_event aligner_ev;
+
 static void accel_cb(uint8_t sender_id __attribute__((unused)),
                      uint32_t stamp __attribute__((unused)),
                      struct Int32Vect3 *accel);
 static void gyro_cb(uint8_t sender_id __attribute__((unused)),
                     uint32_t stamp __attribute__((unused)),
                     struct Int32Rates *gyro);
-static void aligner_cb(uint8_t __attribute__((unused)) sender_id,
-                       uint32_t stamp __attribute__((unused)),
-                       struct Int32Rates *lp_gyro, 
-                       struct Int32Vect3 *lp_accel,
-                       struct Int32Vect3 *lp_mag);
+// static void aligner_cb(uint8_t __attribute__((unused)) sender_id,
+//                        uint32_t stamp __attribute__((unused)),
+//                        struct Int32Rates *lp_gyro, 
+//                        struct Int32Vect3 *lp_accel,
+//                        struct Int32Vect3 *lp_mag);
 
-bool_t IS_ALIGNED = false;
+bool_t gyro_is_aligned = false;
 
 struct StateVector {
   float phi; // rad
@@ -88,7 +92,7 @@ struct StateVector {
 
 struct StateVector x, x_hat; // state vector, prediction vector
 
-struct FloatRates u, u_unbiased; // input vector (gyro measurements), input vector unbiased
+struct FloatRates u; // input vector (gyro measurements), input vector unbiased
 
 float y[2]; // measurements (accelerometer measurements)
 
@@ -121,6 +125,8 @@ static void accel_cb(uint8_t sender_id __attribute__((unused)),
   // Process the incoming accelerometer measurements
   accel_m.x = ACCEL_FLOAT_OF_BFP(accel->x);
   accel_m.y = ACCEL_FLOAT_OF_BFP(accel->y);
+  accel_m.z = ACCEL_FLOAT_OF_BFP(accel->z);
+  //float_vect3_normalize(&accel_m); // normalize the acceleration vector
 
   // RunOnceEvery(10, DOWNLINK_SEND_IMU_ACCEL_SCALED(DefaultChannel, DefaultDevice,
   //                                                 &accel->x,
@@ -135,7 +141,6 @@ static void gyro_cb(uint8_t sender_id __attribute__((unused)),
 {
 	// Process the incoming gyro measurements
   RATES_FLOAT_OF_BFP(u, *gyro);
-  RATES_COPY(u_unbiased, u);
 
   // RunOnceEvery(10, DOWNLINK_SEND_IMU_GYRO_SCALED(DefaultChannel, DefaultDevice,
   //                                                &gyro->p,
@@ -144,22 +149,23 @@ static void gyro_cb(uint8_t sender_id __attribute__((unused)),
   // );
 }
 
-static void aligner_cb(uint8_t __attribute__((unused)) sender_id,
-                       uint32_t stamp __attribute__((unused)),
-                       struct Int32Rates *lp_gyro, 
-                       struct Int32Vect3 *lp_accel,
-                       struct Int32Vect3 *lp_mag)
-{
-  // Use averaged gyro (not truly low-passed) as initial value for bias
-  struct FloatRates bias;
-  RATES_FLOAT_OF_BFP(bias, *lp_gyro);
+// static void aligner_cb(uint8_t __attribute__((unused)) sender_id,
+//                        uint32_t stamp __attribute__((unused)),
+//                        struct Int32Rates *lp_gyro, 
+//                        struct Int32Vect3 *lp_accel,
+//                        struct Int32Vect3 *lp_mag)
+// {
+//   // Use averaged gyro (not truly low-passed) as initial value for bias
+//   struct FloatRates bias;
+//   RATES_FLOAT_OF_BFP(bias, *lp_gyro);
 
-  x.bp = bias.p;
-  x.bq = bias.q;
-  x.br = bias.r;
+//   x.bp = bias.p;
+//   x.bq = bias.q;
+//   x.br = bias.r;
 
-  IS_ALIGNED = true;
-}
+//   gyro_is_aligned = true;
+//   LED_ON(2);
+// }
 
 int main(void)
 {
@@ -175,23 +181,23 @@ int main(void)
 
 static inline void main_init(void)
 {
-  AbiBindMsgIMU_GYRO_INT32(0, &gyro_ev, gyro_cb);
-  AbiBindMsgIMU_ACCEL_INT32(0, &accel_ev, accel_cb);
-  AbiBindMsgIMU_LOWPASSED(0, &aligner_ev, aligner_cb);
-
   mcu_init();
 
   sys_time_register_timer((1. / PERIODIC_FREQUENCY), NULL);
 
   imu_init();
 
-  ahrs_aligner_init();
+  // ahrs_aligner_init();
 
   mcu_int_enable();
 
   downlink_init();
 
   ekf_init();
+
+  AbiBindMsgIMU_GYRO_INT32(0, &gyro_ev, gyro_cb);
+  AbiBindMsgIMU_ACCEL_INT32(0, &accel_ev, accel_cb);
+  // AbiBindMsgIMU_LOWPASSED(0, &aligner_ev, aligner_cb);
 }
 
 static inline void main_periodic_task(void)
@@ -200,19 +206,28 @@ static inline void main_periodic_task(void)
     DOWNLINK_SEND_ALIVE(DefaultChannel, DefaultDevice, 16, MD5SUM);
   });
 
-  if (sys_time.nb_sec > 1) 
+  if (sys_time.nb_sec > 1) {
     imu_periodic(); 
+  }
 
-  if (IS_ALIGNED) 
+  // if (gyro_is_aligned) {
     ekf_periodic_task();
+  // }
 
   // Send EKF debug message
   float dummy_array[1];
+  // uint8_t k = 0;
+  // for (uint8_t i = 0; i < 5; i++) {
+  //   for (uint8_t j = 0; j < 5; j++) {
+  //     dummy_array[k++] = P[i][j];
+  //   }
+  // }
+  // float dummy_value = 0.;
   RunOnceEvery(10, {
-    DOWNLINK_SEND_TEST_EKF_DEBUG(DefaultChannel, DefaultDevice, &P[0][0], &P[1][1], &P[2][2], &P[3][3], 1, dummy_array);
+    DOWNLINK_SEND_TEST_EKF_DEBUG(DefaultChannel, DefaultDevice, &x.phi, &x.theta, &x.bp, &x.bq, 1, dummy_array);
   }); // called at about 50Hz
   
-  RunOnceEvery(10, { LED_PERIODIC();}); // periodic led
+  RunOnceEvery(10, {LED_PERIODIC();}); // periodic led
 }
 
 static inline void main_event_task(void)
@@ -225,34 +240,37 @@ static inline void main_event_task(void)
 static void ekf_time_update(void)
 {
   // Unbias the gyro measurements
-  u_unbiased.p -= x.bp;
-  u_unbiased.q -= x.bq;
-  u_unbiased.r -= x.br;
+  u.p -= x.bp;
+  u.q -= x.bq;
+  u.r -= x.br;
 
   /* Compute the Jacobian of the state propagation matrix f() with
    * respect to the chosen state, given equations (8) and (9) in 
    * Leishman et al, 2014
    */
-  F[0][0] = (cos(x.phi)*u_unbiased.q-sin(x.phi)*u_unbiased.r)*tan(x.theta);
-  F[0][1] = 2*(sin(x.phi)*u_unbiased.q+cos(x.phi)*u_unbiased.r)/(cos(2*x.theta)+1);
-  F[1][0] = -sin(x.phi)*u_unbiased.q-cos(x.phi)*u_unbiased.r;
+  F[0][0] = (cos(x.phi)*u.q-sin(x.phi)*u.r)*tan(x.theta);
+  F[0][1] = 2*(sin(x.phi)*u.q+cos(x.phi)*u.r)/(cos(2*x.theta)+1);
+  F[1][0] = -sin(x.phi)*u.q-cos(x.phi)*u.r;
+  F[2][2] = 1;
+  F[3][3] = 1;
+  F[4][4] = 1;
 
   /* Predict the state update using the state propagation function
    * f() using the gyro measurements 
    */
-  x_hat.phi = x.phi+(1*u_unbiased.p+(sin(x.phi)*u_unbiased.q+cos(x.phi)*u_unbiased.r)*tan(x.theta))*DT;
-  x_hat.theta = x.theta+(cos(x.phi)*u_unbiased.q-sin(x.phi)*u_unbiased.r)*DT;
+  x_hat.phi = x.phi+(1*u.p+(sin(x.phi)*u.q+cos(x.phi)*u.r)*tan(x.theta))*DT;
+  x_hat.theta = x.theta+(cos(x.phi)*u.q-sin(x.phi)*u.r)*DT;
   x_hat.bp = x.bp;
   x_hat.bq = x.bq;
   x_hat.br = x.br;
 
   // Predict the covariance update using the Jacobian matrix
-  // matmn_mul(5, 5, 5, FP, F, P);
+  matmn_mul(5, 5, 5, FP, F, P);
   matmn_mul_transp(5, 5, 5, PFT, P, F);
-  // matmn_add(5, 5, FP, PFT);
-  // matmn_add(5, 5, FP, Q);
-  // matmn_smul(5, 5, FP, DT);
-  // matmn_add(5, 5, P_hat, FP);
+  matmn_add(5, 5, FP, PFT);
+  matmn_add(5, 5, FP, Q);
+  matmn_smul(5, 5, FP, DT);
+  matmn_add(5, 5, P_hat, FP);
 }
 
 static void ekf_measurement_update(void)
@@ -287,6 +305,9 @@ static void ekf_measurement_update(void)
   matmn_vmul(5, 2, KY, K, y);
   x.phi = x_hat.phi+KY[0];
   x.theta = x_hat.theta+KY[1];
+  x.bp = x_hat.bp+KY[2];
+  x.bq = x_hat.bq+KY[3];
+  x.br = x_hat.br+KY[4];
 
   // Update the covariance estimate
   matmn_mul(5, 2, 5, KH, K, H);
@@ -296,13 +317,19 @@ static void ekf_measurement_update(void)
 }
 
 static void ekf_init(void) {
-  matmn_sdiag(5,5,P,1.);
+  x = (struct StateVector){0.,0.,0.,0.,0.};
 
-  
+  matmn_sdiag(5,5,P,M_PI*M_PI);
+  P[2][2] = 1e-6;
+  P[3][3] = 1e-6;
+  P[4][4] = 1e-6;
 
-  matmn_sdiag(5,5,Q,.0001);
-
-  matmn_sdiag(5,5,R,.0001);
+  matmn_sdiag(5,5,Q,.001);
+  Q[2][2] = 1e-10; // Derived from the datasheet
+  Q[3][3] = 1e-10;
+  Q[4][4] = 1e-10;
+ 
+  matmn_sdiag(2,2,R,.0001); // accelerometer noise
 
   matmn_sdiag(5,5,I,1.);
 }
@@ -311,10 +338,9 @@ static void ekf_periodic_task(void)
 {
   ekf_time_update();
 
-  // ekf_measurement_update();
+  ekf_measurement_update();
 }
 
 static void ekf_event_task(void)
 {
-
 }

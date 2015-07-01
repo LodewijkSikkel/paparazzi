@@ -27,11 +27,13 @@
 
 #include "math/pprz_algebra_int.h"
 
+#include "led.h"
+
 // Macro to fill the diagonal of a square matrix with a scalar
 inline void matmn_sdiag(uint8_t m, uint8_t n, float (*mat)[n], float scalar)
 {
   for (int i = 0; i < m; i++) { // loop over the rows
-    mat[m][m] = scalar;
+    mat[i][i] = scalar;
   }
 }
 
@@ -69,7 +71,7 @@ inline void matmn_mul(uint8_t m, uint8_t n, uint8_t nn, float (*mat_o)[nn], floa
 }
 
 // Macro to multiply matrix i with the transpose of matrix ii
-inline void matmn_mul_transp(uint8_t m, uint8_t n, uint8_t nn, float (*mat_o)[nn], float (*mat_i)[n], float (*mat_ii)[nn]) 
+void matmn_mul_transp(uint8_t m, uint8_t n, uint8_t nn, float (*mat_o)[nn], float (*mat_i)[n], float (*mat_ii)[nn]) 
 {
   for (int i = 0; i < m; i++) { // loop over the rows
     for (int jj = 0; jj < nn; jj++) { // loop over the columns of the second matrix
@@ -80,7 +82,6 @@ inline void matmn_mul_transp(uint8_t m, uint8_t n, uint8_t nn, float (*mat_o)[nn
     }
   }
 }
-
 
 // Macro to multiply matrix i with vector v 
 inline void matmn_vmul(uint8_t m, uint8_t n, float vec_o[m], float (*mat_i)[n], float vec_i[n])
