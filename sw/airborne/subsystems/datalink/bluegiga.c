@@ -178,7 +178,7 @@ void bluegiga_receive(void)
       }
     }
 
-    uint8_t packet_len = bluegiga_p.work_rx[1];                 // length of transmitted message
+    uint8_t packet_len = bluegiga_p.work_rx[3];                 // length of transmitted message
 
     if (packet_len > bluegiga_spi.input_length) {
       // Direct message from Bluegiga
@@ -195,12 +195,12 @@ void bluegiga_receive(void)
           coms_status = BLUEGIGA_UNINIT;
           gpio_set(BLUEGIGA_DRDY_GPIO, BLUEGIGA_DRDY_GPIO_PIN);     // Reset interrupt pin
           break;
-        case 0xfe:        // rssi data
+        /*case 0xfe:        // rssi data
           k_rssi = bluegiga_p.work_rx[2];
           for (i = 0; i < k_rssi; i++) {
             bluegiga_rssi[i] = bluegiga_p.work_rx[3 + i];
           }
-          break;
+          break;*/
         case 0xfd:        // interrupt handled on bluegiga
           gpio_set(BLUEGIGA_DRDY_GPIO, BLUEGIGA_DRDY_GPIO_PIN);     // Reset interrupt pin
 
@@ -218,9 +218,10 @@ void bluegiga_receive(void)
 
     // handle incoming datalink message
     else if (packet_len > 0) {
+      bluegiga_rssi[bluegiga_p.work_rx[1]] = bluegiga_p.work_rx[2];
       // Handle received message
       for (uint8_t i = 0; i < packet_len; i++) {
-        bluegiga_p.rx_buf[(bluegiga_p.rx_insert_idx + i) % BLUEGIGA_BUFFER_SIZE] = bluegiga_p.work_rx[i + 2];
+        bluegiga_p.rx_buf[(bluegiga_p.rx_insert_idx + i) % BLUEGIGA_BUFFER_SIZE] = bluegiga_p.work_rx[i + 4];
       }
       bluegiga_increment_buf(&bluegiga_p.rx_insert_idx, packet_len);
       coms_status = BLUEGIGA_IDLE;
