@@ -510,7 +510,7 @@ gboolean timeout_transmit_callback(gpointer data) {
       // bits 1 and 0 are free
 
       uint32_t speed_xy = (((uint32_t)(speed.x*100.0)) & 0x3FF) << 22; // bits 31-21 speed x in cm/s
-      speed_xy |= (((uint32_t)(speed.x*100.0)) & 0x3FF) << 12; // bits 20-10 speed y in cm/s
+      speed_xy |= (((uint32_t)(speed.y*100.0)) & 0x3FF) << 12; // bits 20-10 speed y in cm/s
       speed_xy |= (((uint32_t)(heading*100.0)) & 0x3FF) << 2; // bits 9-0 heading in rad*1e2 (The heading is already subsampled)
       // bits 1 and 0 are free
 

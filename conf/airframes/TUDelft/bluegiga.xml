@@ -191,7 +191,7 @@
     <define name="H_X" value=" 0.47577"/>
     <define name="H_Y" value=" 0.11811"/>
     <define name="H_Z" value=" 0.87161"/>
-    <!--define name="USE_GPS_HEADING" value="1"/-->
+	<define name="USE_GPS_HEADING" value="1"/>
   </section>
 
  <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
@@ -219,7 +219,7 @@
       <configure name="AHRS_PROPAGATE_FREQUENCY" value="500"/>
       <configure name="RADIO_CONTROL_LED" value="none"/>
       <define name="USE_PERSISTENT_SETTINGS" value="TRUE"/>
-      <configure name="USE_MAGNETOMETER" value="1"/>
+      <configure name="USE_MAGNETOMETER" value="0"/>
     </target>
 
     <target name="nps" board="pc">
