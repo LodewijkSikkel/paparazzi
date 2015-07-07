@@ -29,6 +29,8 @@
 
 #include "subsystems/gps.h"
 
+#include "led.h"
+
 #ifdef GPS_USE_DATALINK_SMALL
 #ifndef GPS_LOCAL_ECEF_ORIGIN_X
 #error Local x coordinate in ECEF of the remote GPS required
@@ -74,6 +76,8 @@ void gps_impl_init(void)
 // Parse the REMOTE_GPS_SMALL datalink packet
 void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_xy) {
  
+  LED_TOGGLE(3);
+
   // Position in ENU coordinates
   enu_pos.x = (int32_t)((pos_xyz >> 22) & 0x3FF); // bits 31-22 x position in cm
   if (enu_pos.x & 0x200)

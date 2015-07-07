@@ -774,10 +774,6 @@ int main(int argc, char *argv[])
     // Message loop
 	char in;
     while (state != state_finish){
-		if(kbhit()){
-			in = getchar();
-			break;
-		}
 		usleep(1000);
     }
     

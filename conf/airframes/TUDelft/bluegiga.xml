@@ -92,9 +92,9 @@
 
   <section name="GPS" prefix="GPS_">
     <define name="USE_DATALINK_SMALL" value="1"/>
-    <define name="LOCAL_ECEF_ORIGIN_X" value="392430400"/>
-    <define name="LOCAL_ECEF_ORIGIN_Y" value="30036000"/>
-    <define name="LOCAL_ECEF_ORIGIN_Z" value="500216200"/>
+    <define name="LOCAL_ECEF_ORIGIN_X" value="392430610"/>
+    <define name="LOCAL_ECEF_ORIGIN_Y" value="30035798"/>
+    <define name="LOCAL_ECEF_ORIGIN_Z" value="500216005"/>
   </section>
 
   <section name="AUTOPILOT">
