@@ -2,7 +2,7 @@
 
 <!-- this is a quadrotor frame in X-configuration equiped with
      * Autopilot:   Lisa-m 
-     * Actuators:   HobbyKing Afro Slim 20A with BLHeli 14.0
+     * Actuators:   HobbyKing Avro Slim 20A
      * GPS:         Ublox                  http://wiki.paparazziuav.org/wiki/Subsystem/gps
      * RC:          one Spektrum sat       http://wiki.paparazziuav.org/wiki/Subsystem/radio_control#Spektrum
 -->
@@ -29,7 +29,7 @@
     <subsystem name="actuators"     type="pwm">
       <define name="SERVO_HZ" value="400"/>
     </subsystem>
-    <subsystem name="telemetry"     type="xbee_api"/>
+    <subsystem name="telemetry"     type="transparent"/>
     <subsystem name="imu"           type="aspirin_v2.2"/>
     <subsystem name="gps"           type="ublox"/>
     <subsystem name="stabilization" type="int_quat"/>
