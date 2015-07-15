@@ -88,6 +88,8 @@ void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_x
   enu_pos.z = (int32_t)(pos_xyz >> 2 & 0x3FF); // bits 11-2 z position in cm
   // bits 1 and 0 are free
 
+  printf("North: %dcm, East: %dcm, Up: %dcm\n",enu_pos.x, enu_pos.y, enu_pos.z);
+
   // Convert the ENU coordinates to ECEF
   ecef_of_enu_point_i(&ecef_pos, &tracking_ltp, &enu_pos);
   gps.ecef_pos = ecef_pos;
@@ -111,6 +113,9 @@ void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_x
   if (gps.course & 0x200)
     gps.course |= 0xFFFFFC00; // fix for twos complements
   gps.course *= 1e5;
+
+  printf("Heading: %d (%d)\n", gps.course, gps.course/1e5);
+
   gps.num_sv = num_sv;
   gps.tow = 0; // set time-of-weak to 0
   gps.fix = GPS_FIX_3D; // set 3D fix to true
