@@ -22,6 +22,9 @@
 
 #include "high_speed_logger_spi_link.h"
 
+#include "modules/sensors/dist_imu_mpu6050.h"
+
+#include "state.h"
 #include "subsystems/imu.h"
 #include "mcu_periph/spi.h"
 
@@ -64,6 +67,12 @@ void high_speed_logger_spi_link_periodic(void)
     high_speed_logger_spi_link_data.mag_x      = imu.mag_unscaled.x;
     high_speed_logger_spi_link_data.mag_y      = imu.mag_unscaled.y;
     high_speed_logger_spi_link_data.mag_z      = imu.mag_unscaled.z;
+    high_speed_logger_spi_link_data.phi        = stateGetNedToBodyEulers_i()->phi;
+    high_speed_logger_spi_link_data.theta      = stateGetNedToBodyEulers_i()->theta;
+    high_speed_logger_spi_link_data.psi        = stateGetNedToBodyEulers_i()->psi;
+    high_speed_logger_spi_link_data.extra1     = dist_imu.accel_unscaled[0].x;
+    high_speed_logger_spi_link_data.extra2     = dist_imu.accel_unscaled[0].y;
+    high_speed_logger_spi_link_data.extra3     = dist_imu.accel_unscaled[0].z;
 
     spi_submit(&(HIGH_SPEED_LOGGER_SPI_LINK_DEVICE), &high_speed_logger_spi_link_transaction);
   }

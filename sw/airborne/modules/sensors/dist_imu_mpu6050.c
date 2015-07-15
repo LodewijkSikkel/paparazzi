@@ -97,18 +97,18 @@ void dist_imu_event(void)
     VECT3_COPY(dist_imu.accel_unscaled[0], dist_imu.mpu[0].data_accel.vect);
     dist_imu.mpu[0].data_available = FALSE;
 
-    dist_imu.gyro[0].p = ((dist_imu.gyro_unscaled[0].p - dist_imu.gyro_neutral[0].p) * IMU_GYRO_P_SIGN *
+    dist_imu.gyro[0].p = -((dist_imu.gyro_unscaled[0].p - dist_imu.gyro_neutral[0].p) * IMU_GYRO_P_SIGN *
                       IMU_GYRO_P_SENS_NUM) / IMU_GYRO_P_SENS_DEN;
     dist_imu.gyro[0].q = ((dist_imu.gyro_unscaled[0].q - dist_imu.gyro_neutral[0].q) * IMU_GYRO_Q_SIGN *
                       IMU_GYRO_Q_SENS_NUM) / IMU_GYRO_Q_SENS_DEN;
-    dist_imu.gyro[0].r = ((dist_imu.gyro_unscaled[0].r - dist_imu.gyro_neutral[0].r) * IMU_GYRO_R_SIGN *
+    dist_imu.gyro[0].r = -((dist_imu.gyro_unscaled[0].r - dist_imu.gyro_neutral[0].r) * IMU_GYRO_R_SIGN *
                       IMU_GYRO_R_SENS_NUM) / IMU_GYRO_R_SENS_DEN;
 
-    dist_imu.accel[0].x = ((dist_imu.accel_unscaled[0].x - dist_imu.accel_neutral[0].x) * IMU_ACCEL_X_SIGN *
+    dist_imu.accel[0].x = -((dist_imu.accel_unscaled[0].x - dist_imu.accel_neutral[0].x) * IMU_ACCEL_X_SIGN *
                        IMU_ACCEL_X_SENS_NUM) / IMU_ACCEL_X_SENS_DEN;
     dist_imu.accel[0].y = ((dist_imu.accel_unscaled[0].y - dist_imu.accel_neutral[0].y) * IMU_ACCEL_Y_SIGN *
                        IMU_ACCEL_Y_SENS_NUM) / IMU_ACCEL_Y_SENS_DEN;
-    dist_imu.accel[0].z = ((dist_imu.accel_unscaled[0].z - dist_imu.accel_neutral[0].z) * IMU_ACCEL_Z_SIGN *
+    dist_imu.accel[0].z = -((dist_imu.accel_unscaled[0].z - dist_imu.accel_neutral[0].z) * IMU_ACCEL_Z_SIGN *
                        IMU_ACCEL_Z_SENS_NUM) / IMU_ACCEL_Z_SENS_DEN;
 
     RunOnceEvery(10, { 

@@ -43,6 +43,7 @@
   </firmware>
 
   <modules>
+    <load name="dist_imu_mpu6050.xml"/>
   </modules>
 
   <servos driver="Pwm">
