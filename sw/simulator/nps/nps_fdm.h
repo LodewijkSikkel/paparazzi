@@ -59,21 +59,31 @@ struct NpsFdm {
   struct LlaCoor_d lla_pos_geoc; //geocentric lla from jsbsim
   double agl; //AGL from jsbsim in m
 
-  /*  velocity and acceleration wrt inertial frame expressed in ecef frame */
-  //  struct EcefCoor_d  ecef_inertial_vel;
-  //  struct EcefCoor_d  ecef_inertial_accel;
-  /*  velocity and acceleration wrt ecef frame expressed in ecef frame     */
+  /** velocity in ECEF frame, wrt ECEF frame */
   struct EcefCoor_d  ecef_ecef_vel;
+  /** acceleration in ECEF frame, wrt ECEF frame */
   struct EcefCoor_d  ecef_ecef_accel;
-  /*  velocity and acceleration wrt ecef frame expressed in body frame     */
+
+  /** velocity in body frame, wrt ECEF frame */
   struct DoubleVect3 body_ecef_vel;   /* aka UVW */
+  /** acceleration in body frame, wrt ECEF frame */
   struct DoubleVect3 body_ecef_accel;
-  /*  velocity and acceleration wrt ecef frame expressed in ltp frame     */
+
+  /** velocity in LTP frame, wrt ECEF frame */
   struct NedCoor_d ltp_ecef_vel;
+  /** acceleration in LTP frame, wrt ECEF frame */
   struct NedCoor_d ltp_ecef_accel;
-  /*  velocity and acceleration wrt ecef frame expressed in ltppprz frame */
+
+  /** velocity in ltppprz frame, wrt ECEF frame */
   struct NedCoor_d ltpprz_ecef_vel;
+  /** accel in ltppprz frame, wrt ECEF frame */
   struct NedCoor_d ltpprz_ecef_accel;
+
+  /** acceleration in body frame, wrt ECI inertial frame */
+  struct DoubleVect3 body_inertial_accel;
+
+  /** acceleration in body frame as measured by an accelerometer (incl. gravity) */
+  struct DoubleVect3 body_accel;
 
   /* attitude */
   struct DoubleQuat   ecef_to_body_quat;
@@ -82,9 +92,13 @@ struct NpsFdm {
   struct DoubleQuat   ltpprz_to_body_quat;
   struct DoubleEulers ltpprz_to_body_eulers;
 
-  /*  velocity and acceleration wrt ecef frame expressed in body frame     */
+  /*  angular velocity and acceleration in body frame, wrt ECEF frame */
   struct DoubleRates  body_ecef_rotvel;
   struct DoubleRates  body_ecef_rotaccel;
+
+  /*  angular velocity and acceleration in body frame, wrt inertial ECI frame */
+  struct DoubleRates  body_inertial_rotvel;
+  struct DoubleRates  body_inertial_rotaccel;
 
   struct DoubleVect3 ltp_g;
   struct DoubleVect3 ltp_h;
@@ -97,7 +111,9 @@ extern struct NpsFdm fdm;
 
 extern void nps_fdm_init(double dt);
 extern void nps_fdm_run_step(bool_t launch, double* commands, int commands_nb);
-extern void nps_fdm_set_wind(double speed, double dir, int turbulence_severity);
+extern void nps_fdm_set_wind(double speed, double dir);
+extern void nps_fdm_set_wind_ned(double wind_north, double wind_east, double wind_down);
+extern void nps_fdm_set_turbulence(double wind_speed, int turbulence_severity);
 
 #ifdef __cplusplus
 } /* extern "C" */

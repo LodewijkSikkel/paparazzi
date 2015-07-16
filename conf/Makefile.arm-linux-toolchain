@@ -17,12 +17,14 @@ endif
 #
 # if gcc can't be found in path, try the codesourcery toolchain in /usr/local/codesourcery
 #
-#ifeq ($(shell which $(PREFIX)-gcc),)
+ifeq ($(shell which $(PREFIX)-gcc),)
+ifndef HARD_FLOAT
   TOOLCHAIN=$(shell find -L /usr/local/codesourcery -maxdepth 2 -type d -name arm-none-linux-gnueabi 2>/dev/null | head -n 1)
   ifneq ($(TOOLCHAIN),)
     PREFIX=$(shell dirname $(TOOLCHAIN))/bin/arm-none-linux-gnueabi
   endif
-#endif
+endif
+endif
 
 # if toolchain could not be found, print some useful info
 ifeq ($(shell which $(PREFIX)-gcc),)
@@ -30,9 +32,10 @@ ifeq ($(shell which $(PREFIX)-gcc),)
   ifdef HARD_FLOAT
     $(error Error: arm-linux-gnueabihf-gcc cross-compiler not found! Please install the gcc-arm-linux-gnueabihf package.)
   else
+    # no suitable toolchain found...
     $(error Error: arm-linux-gnueabi-gcc cross-compiler not found! Please install the gcc-arm-linux-gnueabi package.)
   endif
-#else
+else
   # this was previously explicitly added, but shouln't be needed...
   #CFLAGS += -I/usr/arm-linux-gnueabi/include
 endif
