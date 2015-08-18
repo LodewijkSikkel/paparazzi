@@ -27,10 +27,11 @@
  * GPS structure to the values received.
  */
 
+#include <stdio.h>
+
 #include "subsystems/gps.h"
 #include "subsystems/abi.h"
-
-#include "led.h"
+#include "math/pprz_geodetic_int.h"
 
 #ifdef GPS_USE_DATALINK_SMALL
 #ifndef GPS_LOCAL_ECEF_ORIGIN_X
@@ -66,21 +67,20 @@ void gps_impl_init(void)
   gps.gspeed = 700; // To enable course setting
   gps.cacc = 0; // To enable course setting
 
-  tracking_ecef.x = GPS_LOCAL_ECEF_ORIGIN_X;
-  tracking_ecef.y = GPS_LOCAL_ECEF_ORIGIN_Y;
-  tracking_ecef.z = GPS_LOCAL_ECEF_ORIGIN_Z;
+#ifdef GPS_USE_DATALINK_SMALL
+  tracking_ecef.x = GPS_LOCAL_ECEF_ORIGIN_X; // in cm
+  tracking_ecef.y = GPS_LOCAL_ECEF_ORIGIN_Y; // in cm
+  tracking_ecef.z = GPS_LOCAL_ECEF_ORIGIN_Z; // in cm
 
   ltp_def_from_ecef_i(&tracking_ltp, &tracking_ecef);
+#endif
 }
 
 #ifdef GPS_USE_DATALINK_SMALL
 // Parse the REMOTE_GPS_SMALL datalink packet
 void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_xy) {
- 
-  LED_TOGGLE(3);
-
   // Position in ENU coordinates
-  enu_pos.x = (int32_t)((pos_xyz >> 22) & 0x3FF); // bits 31-22 x position in cm
+  enu_pos.x = (uint32_t)((pos_xyz >> 22) & 0x3FF); // bits 31-22 x position in cm
   if (enu_pos.x & 0x200)
     enu_pos.x |= 0xFFFFFC00; // fix for twos complements
   enu_pos.y = (int32_t)((pos_xyz >> 12) & 0x3FF); // bits 21-12 y position in cm
@@ -89,7 +89,7 @@ void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_x
   enu_pos.z = (int32_t)(pos_xyz >> 2 & 0x3FF); // bits 11-2 z position in cm
   // bits 1 and 0 are free
 
-  printf("North: %dcm, East: %dcm, Up: %dcm\n",enu_pos.x, enu_pos.y, enu_pos.z);
+  printf("East: %dcm, North: %dcm, Up: %dcm (%u)\n",enu_pos.x, enu_pos.y, enu_pos.z, pos_xyz);
 
   // Convert the ENU coordinates to ECEF
   ecef_of_enu_point_i(&ecef_pos, &tracking_ltp, &enu_pos);
@@ -99,7 +99,7 @@ void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_x
   gps.lla_pos = lla_pos;
 
   enu_speed.x = (int32_t)((speed_xy >> 22) & 0x3FF); // bits 31-22 speed x in cm/s
-  if (enu_pos.x & 0x200)
+  if (enu_speed.x & 0x200)
     enu_speed.x |= 0xFFFFFC00; // fix for twos complements
   enu_speed.y = (int32_t)((speed_xy >> 12) & 0x3FF); // bits 21-12 speed y in cm/s
   if (enu_speed.y & 0x200)
@@ -110,12 +110,13 @@ void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_x
 
   gps.hmsl = tracking_ltp.hmsl+enu_pos.z*10; // TODO: try to compensate for the loss in accuracy
   
+  printf("East: %dcm/s, North: %dcm/s, Heading: %drad\n",enu_speed.x, enu_speed.y, gps.course);
+
   gps.course = (int32_t)((speed_xy >> 2) & 0x3FF); // bits 11-2 heading in rad*1e2
   if (gps.course & 0x200)
     gps.course |= 0xFFFFFC00; // fix for twos complements
-  gps.course *= 1e5;
 
-  printf("Heading: %d (%d)\n", gps.course, gps.course/1e5);
+  gps.course *= 1e5;
 
   gps.num_sv = num_sv;
   gps.tow = 0; // set time-of-weak to 0
@@ -136,6 +137,16 @@ void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_x
   gps.utm_pos.alt = gps.lla_pos.alt;
   gps.utm_pos.zone = nav_utm_zone0;
 #endif
+
+  // publish new GPS data
+  uint32_t now_ts = get_sys_time_usec();
+  gps.last_msg_ticks = sys_time.nb_sec_rem;
+  gps.last_msg_time = sys_time.nb_sec;
+  if (gps.fix == GPS_FIX_3D) {
+    gps.last_3dfix_ticks = sys_time.nb_sec_rem;
+    gps.last_3dfix_time = sys_time.nb_sec;
+  }
+  AbiSendMsgGPS(GPS_DATALINK_ID, now_ts, &gps);
 }
 #endif
 

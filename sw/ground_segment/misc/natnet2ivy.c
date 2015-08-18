@@ -118,7 +118,8 @@ struct Aircraft aircrafts[MAX_RIGIDBODIES];                  ///< Mapping from r
 /** Natnet socket connections */
 struct UdpSocket natnet_data, natnet_cmd;
 
-/** Tracking location LTP and angle offset from north */
+/** Tracking local coordinates, location LTP and angle offset from north */
+struct DoubleVect3 tracking_local; 
 struct LtpDef_d tracking_ltp;       ///< The tracking system LTP definition
 double tracking_offset_angle;       ///< The offset from the tracking system to the North in degrees
 
@@ -207,8 +208,8 @@ void natnet_parse(unsigned char *in) {
 
       memcpy(&rigidBodies[j].id, ptr, 4); ptr += 4;
       memcpy(&rigidBodies[j].x, ptr, 4); ptr += 4;   //x --> X
-      memcpy(&rigidBodies[j].z, ptr, 4); ptr += 4;   //y --> Z
-      memcpy(&rigidBodies[j].y, ptr, 4); ptr += 4;   //z --> Y
+      memcpy(&rigidBodies[j].y, ptr, 4); ptr += 4;   //y --> Y
+      memcpy(&rigidBodies[j].z, ptr, 4); ptr += 4;   //z --> Z
       memcpy(&rigidBodies[j].qx, ptr, 4); ptr += 4;  //qx --> QX
       memcpy(&rigidBodies[j].qz, ptr, 4); ptr += 4;  //qy --> QZ
       memcpy(&rigidBodies[j].qy, ptr, 4); ptr += 4;  //qz --> QY
@@ -452,10 +453,18 @@ gboolean timeout_transmit_callback(gpointer data) {
     struct DoubleQuat orient;
     struct DoubleEulers orient_eulers;
 
+    /* Rotate the local Optitrack coordinate frame, such that it coincides with the ENU coordinate from, such
+     * the x-axis points towards the east. The following coordinate transformation will be used:
+     * [x_enu]   [ cos(tracking_offset_angle) 0 -sin(tracking_offset_angle)]
+     * [y_enu] = [-sin(tracking_offset_angle) 0 -cos(tracking_offset_angle)]
+     * [z_enu]   [                          0 1                           0]
+     * after the local coordinates have been corrected 
+     */ 
+
     // Add the Optitrack angle to the x and y positions
-    pos.x = cos(tracking_offset_angle) * rigidBodies[i].x + sin(tracking_offset_angle) * rigidBodies[i].y;
-    pos.y = sin(tracking_offset_angle) * rigidBodies[i].x - cos(tracking_offset_angle) * rigidBodies[i].y;
-    pos.z = rigidBodies[i].z;
+    pos.x = cos(tracking_offset_angle) * (rigidBodies[i].x-tracking_local.x) - sin(tracking_offset_angle) * (rigidBodies[i].z-tracking_local.z);
+    pos.y = -sin(tracking_offset_angle) * (rigidBodies[i].x-tracking_local.x) - cos(tracking_offset_angle) * (rigidBodies[i].z-tracking_local.z);
+    pos.z = (rigidBodies[i].y-tracking_local.y);
 
     // Convert the position to ecef and lla based on the Optitrack LTP
     ecef_of_enu_point_d(&ecef_pos ,&tracking_ltp ,&pos);
@@ -472,9 +481,9 @@ gboolean timeout_transmit_callback(gpointer data) {
       rigidBodies[i].vel_z = rigidBodies[i].vel_z / sample_time;
 
       // Add the Optitrack angle to the x and y velocities
-      speed.x = cos(tracking_offset_angle) * rigidBodies[i].vel_x + sin(tracking_offset_angle) * rigidBodies[i].vel_y;
-      speed.y = sin(tracking_offset_angle) * rigidBodies[i].vel_x - cos(tracking_offset_angle) * rigidBodies[i].vel_y;
-      speed.z = rigidBodies[i].vel_z;
+      speed.x = cos(tracking_offset_angle) * rigidBodies[i].vel_x - sin(tracking_offset_angle) * rigidBodies[i].vel_z;
+      speed.y = -sin(tracking_offset_angle) * rigidBodies[i].vel_x - cos(tracking_offset_angle) * rigidBodies[i].vel_z;
+      speed.z = rigidBodies[i].vel_y;
 
       // Conver the speed to ecef based on the Optitrack LTP
       ecef_of_enu_vect_d(&rigidBodies[i].ecef_vel ,&tracking_ltp ,&speed);
@@ -488,8 +497,8 @@ gboolean timeout_transmit_callback(gpointer data) {
     DOUBLE_EULERS_OF_QUAT(orient_eulers, orient);
 
     // Calculate the heading by adding the Natnet offset angle and normalizing it
-    double heading = -orient_eulers.psi-tracking_offset_angle;
-    NormRadAngle(heading);
+    double heading = -orient_eulers.psi+tracking_offset_angle;
+    // NormRadAngle(heading);
 
     printf_debug("[%d -> %d]Samples: %d\t%d\t\tTiming: %3.3f latency\n", rigidBodies[i].id, aircrafts[rigidBodies[i].id].ac_id
       , rigidBodies[i].nSamples, rigidBodies[i].nVelocitySamples, natnet_latency);
@@ -504,15 +513,28 @@ gboolean timeout_transmit_callback(gpointer data) {
        * a single integer. The z axis is considered unsigned and only the latter 10 LSBs are
        * used.
        */
-      uint32_t pos_xyz = (((uint32_t)(pos.x*100.0)) & 0x3FF) << 22; // bits 31-22 x position in cm
-      pos_xyz |= (((uint32_t)(pos.y*100.0)) & 0x3FF) << 12; // bits 21-12 y position in cm
-      pos_xyz |= (((uint32_t)(pos.z*100.0)) & 0x3FF) << 2; // bits 11-2 z position in cm
+      int32_t pos_xyz = pos.x; // bits 31-22 x position in cm
+      // pos_xyz |= (((uint32_t)(pos.y*100.0)) & 0x3FF) << 12; // bits 21-12 y position in cm
+      // pos_xyz |= (((uint32_t)(pos.z*100.0)) & 0x3FF) << 2; // bits 11-2 z position in cm
       // bits 1 and 0 are free
+
+      double test = pos.x*100.0;
+      uint32_t test_2 = (uint32_t)test;
+      test_2 &= 0x3FF;
+      int32_t test_3 = (int32_t)test_2;
+      if (test_3 & 0x200)
+        test_3 |= 0xFFFFFC00; // fix for twos complements
+
+      printf("pos_xyz: %d (%2.4f)\n", test_3, test);
+
+      // printf("ENU x: %2.4f, ENU y: %2.4f, ENU z: %2.4f (%u)\n", pos.x, pos.y, pos.z, pos_xyz);
 
       uint32_t speed_xy = (((uint32_t)(speed.x*100.0)) & 0x3FF) << 22; // bits 31-21 speed x in cm/s
       speed_xy |= (((uint32_t)(speed.y*100.0)) & 0x3FF) << 12; // bits 20-10 speed y in cm/s
-      speed_xy |= (((uint32_t)(heading*100.0)) & 0x3FF) << 2; // bits 9-0 heading in rad*1e2 (The heading is already subsampled)
+      speed_xy |= (((uint32_t)(heading*100.0)) & 0x3FF) << 2; // bits 9-0 heading in rad*1e2 CW/North
       // bits 1 and 0 are free
+
+      // printf("ENU xd: %2.4f, ENU yd: %2.4f, heading: %2.4f\n", speed.x, speed.y, heading);
 
       IvySendMsg("0 REMOTE_GPS_SMALL %d %d %d %d", aircrafts[rigidBodies[i].id].ac_id, // uint8 rigid body ID (1 byte)
         (uint8_t)rigidBodies[i].nMarkers, // status (1 byte)
@@ -587,6 +609,7 @@ void print_help(char* filename) {
     "   -cmd_port <port>          NatNet server command socket UDP port (1511)\n\n"
 
     "   -ecef <x> <y> <z>         ECEF coordinates of the tracking system\n"
+    "   -local <x> <y> <z>        Local coordinated of the origin\n"
     "   -lla <lat> <lon> <alt>    Latitude, longitude and altitude of the tracking system\n"
     "   -offset_angle <degree>    Tracking system angle offset compared to the North in degrees\n\n"
 
@@ -673,7 +696,7 @@ static void parse_options(int argc, char** argv) {
       natnet_cmd_port = atoi(argv[++i]);
     }
 
-    // Set the Tracking system position in ECEF
+    // Set the tracking system position in ECEF
     else if (strcmp(argv[i], "-ecef") == 0) {
       check_argcount(argc, argv, i, 3);
 
@@ -682,6 +705,14 @@ static void parse_options(int argc, char** argv) {
       tracking_ecef.y  = atof(argv[++i]);
       tracking_ecef.z  = atof(argv[++i]);
       ltp_def_from_ecef_d(&tracking_ltp, &tracking_ecef);
+    }
+    // Set the tracking system coordinates in local coordinates
+    else if (strcmp(argv[i], "-local") == 0) {
+      check_argcount(argc, argv, i, 3);
+
+      tracking_local.x  = atof(argv[++i]);
+      tracking_local.y  = atof(argv[++i]);
+      tracking_local.z  = atof(argv[++i]);
     }
     // Set the tracking system position in LLA
     else if (strcmp(argv[i], "-lla") == 0) {
@@ -749,7 +780,10 @@ int main(int argc, char** argv)
   tracking_ecef.x = 3924302;
   tracking_ecef.y = 300366;
   tracking_ecef.z = 5002164;
-  tracking_offset_angle = 1.95476876223364;
+  tracking_local.x = -5.; // default: set to center of the Optitrack system
+  tracking_local.y = 0.;
+  tracking_local.z = 5.;
+  tracking_offset_angle = -1.95476876223364; // according to right-hand rule convention
   ltp_def_from_ecef_d(&tracking_ltp, &tracking_ecef);
 
   // Parse the options from cmdline

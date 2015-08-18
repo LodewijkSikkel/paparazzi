@@ -76,6 +76,7 @@ void downlink_init(void)
 #if DATALINK == BLUEGIGA
   bluegiga_init();
 #endif
+#endif
 
 #if USE_PPRZLOG
   pprzlog_transport_init();
