@@ -8,13 +8,15 @@
 #include "math/pprz_algebra_double.h"
 #include "subsystems/ins.h"
 #include "subsystems/navigation/common_nav.h"
+#include "nps_autopilot.h"
 
 /* fixedwing specific Datalink Ivy functions */
-void on_DL_MOVE_WP(IvyClientPtr app __attribute__ ((unused)),
-                   void *user_data __attribute__ ((unused)),
-                   int argc __attribute__ ((unused)), char *argv[]);
+void on_DL_MOVE_WP(IvyClientPtr app __attribute__((unused)),
+                   void *user_data __attribute__((unused)),
+                   int argc __attribute__((unused)), char *argv[]);
 
-void nps_ivy_init(char* ivy_bus) {
+void nps_ivy_init(char *ivy_bus)
+{
   /* init ivy and bind some messages common to fw and rotorcraft */
   nps_ivy_common_init(ivy_bus);
 
@@ -30,9 +32,13 @@ void nps_ivy_init(char* ivy_bus) {
 #define MOfCm(_x) (((float)(_x))/100.)
 #define MOfMM(_x) (((float)(_x))/1000.)
 
-void on_DL_MOVE_WP(IvyClientPtr app __attribute__ ((unused)),
-                   void *user_data __attribute__ ((unused)),
-                   int argc __attribute__ ((unused)), char *argv[]) {
+void on_DL_MOVE_WP(IvyClientPtr app __attribute__((unused)),
+                   void *user_data __attribute__((unused)),
+                   int argc __attribute__((unused)), char *argv[])
+{
+  if (!autopilot.datalink_enabled) {
+    return;
+  }
 
   if (atoi(argv[2]) == AC_ID) {
     uint8_t wp_id = atoi(argv[1]);

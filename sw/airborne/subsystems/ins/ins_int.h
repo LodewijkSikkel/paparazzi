@@ -30,6 +30,7 @@
 #define INS_INT_H
 
 #include "subsystems/ins.h"
+#include "subsystems/gps.h"
 #include "std.h"
 #include "math/pprz_geodetic_int.h"
 #include "math/pprz_algebra_float.h"
@@ -38,6 +39,8 @@
 struct InsInt {
   struct LtpDef_i  ltp_def;
   bool_t           ltp_initialized;
+
+  uint32_t propagation_cnt; ///< number of propagation steps since the last measurement update
 
   /** request to realign horizontal filter.
    * Sets to current position (local origin unchanged).
@@ -65,6 +68,17 @@ struct InsInt {
 };
 
 /** global INS state */
-extern struct InsInt ins_impl;
+extern struct InsInt ins_int;
+
+extern void ins_int_init(void);
+extern void ins_int_propagate(struct Int32Vect3 *accel, float dt);
+extern void ins_int_update_gps(struct GpsState *gps_s);
+
+
+#ifndef DefaultInsImpl
+#define DefaultInsImpl ins_int
+#endif
+
+extern void ins_int_register(void);
 
 #endif /* INS_INT_H */

@@ -63,8 +63,7 @@ val is_fixed_array_type : string -> bool
 
 val size_of_field : field -> int
 val string_of_value : value -> string
-val formatted_string_of_value : 'a -> value -> string
-val string_of_value_format : 'a -> value -> string
+val formatted_string_of_value : format -> value -> string
 val int_of_value : value -> int (* May raise Invalid_argument *)
 type type_descr = {
     format : string ;
@@ -75,6 +74,9 @@ type type_descr = {
   }
 val types : (string * type_descr) list
 type values  = (string * value) list
+
+val value : _type -> string -> value
+(** return a value from a string and a type *)
 
 val assoc : string -> values -> value
 (** Safe assoc taking into accound characters case. May raise Failure ... *)
@@ -179,7 +181,7 @@ module type MESSAGES = sig
   val message_send : ?timestamp:float -> ?link_id:int -> string -> string -> values -> unit
   (** [message_send sender msg_name values] *)
 
-  val message_bind : ?sender:string ->string -> (string -> values -> unit) -> Ivy.binding
+  val message_bind : ?sender:string -> ?timestamp:bool -> string -> (string -> values -> unit) -> Ivy.binding
   (** [message_bind ?sender msg_name callback] *)
 
   val message_answerer : string -> string -> (string -> values -> values) -> Ivy.binding

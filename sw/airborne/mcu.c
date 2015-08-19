@@ -39,9 +39,11 @@
 #endif
 #endif
 #if USE_UART0 || USE_UART1 || USE_UART2 || USE_UART3 || USE_UART4 || USE_UART5 || USE_UART6
+#define USING_UART 1
 #include "mcu_periph/uart.h"
 #endif
 #if USE_I2C0 || USE_I2C1 || USE_I2C2 || USE_I2C3
+#define USING_I2C 1
 #include "mcu_periph/i2c.h"
 #endif
 #if USE_ADC
@@ -61,10 +63,19 @@
 #endif
 #endif /* PERIPHERALS_AUTO_INIT */
 
+void WEAK board_init(void)
+{
+  // default board init function does nothing...
+}
+
 void mcu_init(void)
 {
 
   mcu_arch_init();
+  /* If we have a board specific init function, call it.
+   * Otherwise it will simply call the empty weak function.
+   */
+  board_init();
 
 #ifdef PERIPHERALS_AUTO_INIT
   sys_time_init();
@@ -95,6 +106,9 @@ void mcu_init(void)
 #endif
 #if USE_UART6
   uart6_init();
+#endif
+#if USING_UART
+  uart_arch_init();
 #endif
 #ifdef USE_I2C0
   i2c0_init();
@@ -157,18 +171,25 @@ void mcu_init(void)
   dac_init();
 #endif
 
-#ifdef USE_UDP0
-  UDP0Init();
-#endif
-#ifdef USE_UDP1
-  UDP1Init();
-#endif
-#ifdef USE_UDP2
-  UDP2Init();
+#if USE_UDP0 || USE_UDP1 || USE_UDP2
+  udp_arch_init();
 #endif
 
 #else
   INFO("PERIPHERALS_AUTO_INIT not enabled! Peripherals (including sys_time) need explicit initialization.")
 #endif /* PERIPHERALS_AUTO_INIT */
 
+}
+
+
+
+void mcu_event(void)
+{
+#if USING_I2C
+  i2c_event();
+#endif
+
+#if USE_USB_SERIAL
+  VCOM_event();
+#endif
 }
