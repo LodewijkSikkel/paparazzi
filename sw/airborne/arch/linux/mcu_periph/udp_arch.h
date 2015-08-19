@@ -27,14 +27,8 @@
 #define UDP_ARCH_H
 
 #include "mcu_periph/udp.h"
-#include <sys/socket.h>
-#include <arpa/inet.h>
+#include "udp_socket.h"
 
-struct UdpNetwork {
-  int socket_in;
-  int socket_out;
-  struct sockaddr_in addr_in;
-  struct sockaddr_in addr_out;
-};
+extern void udp_arch_init(void);
 
 #endif /* UDP_ARCH_H */

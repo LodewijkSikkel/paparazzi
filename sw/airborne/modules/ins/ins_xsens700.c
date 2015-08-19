@@ -42,10 +42,10 @@
 #error "USE_GPS needs to be 1 to use the Xsens GPS!"
 #endif
 #include "subsystems/gps.h"
+#include "subsystems/abi.h"
 #include "math/pprz_geodetic_wgs84.h"
 #include "math/pprz_geodetic_float.h"
 #include "subsystems/navigation/common_nav.h" /* needed for nav_utm_zone0 */
-bool_t gps_xsens_msg_available;
 #endif
 
 // positions
@@ -162,7 +162,6 @@ struct UtmCoor_f utm_f;
 volatile int xsens_configured = 0;
 
 void xsens_init(void);
-void xsens_periodic(void);
 
 void xsens_init(void)
 {
@@ -176,7 +175,9 @@ void xsens_init(void)
 }
 
 #if USE_INS_MODULE
-void ins_init(void)
+void ins_xsens_update_gps(struct GpsState *gps_s);
+
+void ins_xsens_init(void)
 {
   struct UtmCoor_f utm0 = { nav_utm_north0, nav_utm_east0, 0., nav_utm_zone0 };
   stateSetLocalUtmOrigin_f(&utm0);
@@ -188,26 +189,36 @@ void ins_init(void)
   xsens_init();
 }
 
-void ins_periodic(void)
+#include "subsystems/abi.h"
+static abi_event gps_ev;
+static void gps_cb(uint8_t sender_id __attribute__((unused)),
+                   uint32_t stamp __attribute__((unused)),
+                   struct GpsState *gps_s)
 {
-  xsens_periodic();
+  ins_xsens_update_gps(gps_s);
 }
 
-void ins_update_gps(void)
+void ins_xsens_register(void)
+{
+  ins_register_impl(ins_xsens_init);
+  AbiBindMsgGPS(ABI_BROADCAST, &gps_ev, gps_cb);
+}
+
+void ins_xsens_update_gps(struct GpsState *gps_s)
 {
   struct UtmCoor_f utm;
-  utm.east = gps.utm_pos.east / 100.;
-  utm.north = gps.utm_pos.north / 100.;
+  utm.east = gps_s->utm_pos.east / 100.;
+  utm.north = gps_s->utm_pos.north / 100.;
   utm.zone = nav_utm_zone0;
-  utm.alt = gps.hmsl / 1000.;
+  utm.alt = gps_s->hmsl / 1000.;
 
   // set position
   stateSetPositionUtm_f(&utm);
 
   struct NedCoor_f ned_vel = {
-    gps.ned_vel.x / 100.,
-    gps.ned_vel.y / 100.,
-    gps.ned_vel.z / 100.
+    gps_s->ned_vel.x / 100.,
+    gps_s->ned_vel.y / 100.,
+    gps_s->ned_vel.z / 100.
   };
   // set velocity
   stateSetSpeedNed_f(&ned_vel);
@@ -218,7 +229,19 @@ void ins_update_gps(void)
 void gps_impl_init(void)
 {
   gps.nb_channels = 0;
-  gps_xsens_msg_available = FALSE;
+}
+
+static void gps_xsens_publish(void)
+{
+  // publish gps data
+  uint32_t now_ts = get_sys_time_usec();
+  gps.last_msg_ticks = sys_time.nb_sec_rem;
+  gps.last_msg_time = sys_time.nb_sec;
+  if (gps.fix == GPS_FIX_3D) {
+    gps.last_3dfix_ticks = sys_time.nb_sec_rem;
+    gps.last_3dfix_time = sys_time.nb_sec;
+  }
+  AbiSendMsgGPS(GPS_XSENS_ID, now_ts, &gps);
 }
 #endif
 
@@ -304,7 +327,7 @@ void xsens_periodic(void)
 #if USE_INS_MODULE
 #include "state.h"
 
-static inline void update_fw_estimator(void)
+static inline void update_state_interface(void)
 {
   // Send to Estimator (Control)
 #if XSENS_BACKWARDS
@@ -339,7 +362,7 @@ void handle_ins_msg(void)
 {
 
 #if USE_INS_MODULE
-  update_fw_estimator();
+  update_state_interface();
 #endif
 
 #if USE_GPS_XSENS
@@ -490,7 +513,7 @@ void parse_ins_msg(void)
           gps.utm_pos.east = utm_f.east * 100;
           gps.utm_pos.north = utm_f.north * 100;
 
-          gps_xsens_msg_available = TRUE;
+          gps_xsens_publish();
         }
       } else if (code1 == 0xD0) {
         if (code2 == 0x10) {

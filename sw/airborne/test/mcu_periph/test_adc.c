@@ -20,12 +20,13 @@
  *
  */
 
+#define DATALINK_C
+
 #include BOARD_CONFIG
 #include "mcu.h"
 #include "mcu_periph/sys_time.h"
 #include "led.h"
 #include "mcu_periph/adc.h"
-#include "mcu_periph/uart.h"
 #include "subsystems/datalink/downlink.h"
 
 int main_periodic(void);
@@ -42,6 +43,7 @@ static inline void main_init(void)
 {
   mcu_init();
   sys_time_register_timer((1. / 100), NULL);
+  downlink_init();
   adc_init();
 
 #ifdef ADC_0
@@ -103,5 +105,5 @@ static inline void main_periodic_task(void)
 
 static inline void main_event_task(void)
 {
-
+  mcu_event();
 }
