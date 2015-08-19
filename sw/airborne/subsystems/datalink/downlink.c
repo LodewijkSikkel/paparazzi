@@ -71,7 +71,7 @@ void downlink_init(void)
 
   datalink_nb_msgs = 0;
 
-#if DATALINK == PPRZ || DATALINK == SUPERBITRF || DATALINK == W5100 || DATALINK == BLUEGIGA
+#if DATALINK == PPRZ || DATALINK == SUPERBITRF || DATALINK == W5100
   pprz_transport_init(&pprz_tp);
 #endif
 #if DATALINK == XBEE
@@ -83,7 +83,6 @@ void downlink_init(void)
 #if DATALINK == BLUEGIGA
   bluegiga_init();
 #endif
-
 #endif
 
 #if USE_PPRZLOG
