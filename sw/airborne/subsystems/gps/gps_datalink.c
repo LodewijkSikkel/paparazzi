@@ -27,10 +27,10 @@
  * GPS structure to the values received.
  */
 
+#include "led.h" // REMOVE
+
 #include "subsystems/gps.h"
 #include "subsystems/abi.h"
-
-#include <stdio.h> // REMOVE
 
 #ifdef GPS_USE_DATALINK_SMALL
 #ifndef GPS_LOCAL_ECEF_ORIGIN_X
@@ -66,18 +66,19 @@ void gps_impl_init(void)
   gps.gspeed = 700; // To enable course setting
   gps.cacc = 0; // To enable course setting
 
+#ifdef GPS_USE_DATALINK_SMALL
   tracking_ecef.x = GPS_LOCAL_ECEF_ORIGIN_X;
   tracking_ecef.y = GPS_LOCAL_ECEF_ORIGIN_Y;
   tracking_ecef.z = GPS_LOCAL_ECEF_ORIGIN_Z;
 
   ltp_def_from_ecef_i(&tracking_ltp, &tracking_ecef);
+#endif
 }
 
 #ifdef GPS_USE_DATALINK_SMALL
 // Parse the REMOTE_GPS_SMALL datalink packet
 void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_xy)
 {
-
   // Position in ENU coordinates
   enu_pos.x = (int32_t)((pos_xyz >> 22) & 0x3FF); // bits 31-22 x position in cm
   if (enu_pos.x & 0x200) {
@@ -89,8 +90,6 @@ void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_x
   }
   enu_pos.z = (int32_t)(pos_xyz >> 2 & 0x3FF); // bits 11-2 z position in cm
   // bits 1 and 0 are free
-
-  printf("ENU Pos: %u (%d, %d, %d)\n", pos_xyz, enu_pos.x, enu_pos.y, enu_pos.z);
 
   // Convert the ENU coordinates to ECEF
   ecef_of_enu_point_i(&ecef_pos, &tracking_ltp, &enu_pos);
@@ -109,8 +108,6 @@ void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_x
   }
   enu_speed.z = 0;
 
-  printf("ENU Speed: %u (%d, %d, %d)\n", speed_xy, enu_speed.x, enu_speed.y, enu_speed.z);
-
   ecef_of_enu_vect_i(&gps.ecef_vel , &tracking_ltp , &enu_speed);
 
   gps.hmsl = tracking_ltp.hmsl + enu_pos.z * 10; // TODO: try to compensate for the loss in accuracy
@@ -119,8 +116,6 @@ void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_x
   if (gps.course & 0x200) {
     gps.course |= 0xFFFFFC00;  // fix for twos complements
   }
-
-  printf("Heading: %d\n", gps.course); // REMOVE
 
   gps.course *= 1e5;
   gps.num_sv = num_sv;
