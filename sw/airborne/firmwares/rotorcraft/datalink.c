@@ -42,9 +42,9 @@
 #include "subsystems/radio_control.h"
 #endif
 
-#if defined GPS_DATALINK
-#include "subsystems/gps/gps_datalink.h"
-#endif
+// #if defined GPS_DATALINK
+// #include "subsystems/gps/gps_datalink.h"
+// #endif
 
 #include "firmwares/rotorcraft/navigation.h"
 
@@ -131,6 +131,7 @@ void dl_parse_msg(void)
       break;
 #endif // RADIO_CONTROL_TYPE_DATALINK
 #if defined GPS_DATALINK
+#ifdef GPS_USE_DATALINK_SMALL
     case DL_REMOTE_GPS_SMALL : 
       // Check if the GPS is for this AC
       if (DL_REMOTE_GPS_SMALL_ac_id(dl_buffer) != AC_ID) { 
@@ -138,11 +139,11 @@ void dl_parse_msg(void)
       }
 
       parse_gps_datalink_small(
-        DL_REMOTE_GPS_SMALL_num_sv(dl_buffer),
+        DL_REMOTE_GPS_SMALL_numsv(dl_buffer),
         DL_REMOTE_GPS_SMALL_pos_xyz(dl_buffer),
         DL_REMOTE_GPS_SMALL_speed_xy(dl_buffer));
       break;
-
+#endif
     case DL_REMOTE_GPS :
       // Check if the GPS is for this AC
       if (DL_REMOTE_GPS_ac_id(dl_buffer) != AC_ID) { break; }

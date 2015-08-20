@@ -31,7 +31,7 @@
 #include "mcu_periph/gpio.h"
 
 #ifndef BLUEGIGA_SPI_DEV
-#define BLUEGIGA_SPI_DEV spi2
+#error "bluegiga: must define a BLUEGIGA_SPI_DEV"
 #endif
 
 #ifndef BLUEGIGA_SLAVE_IDX
@@ -73,7 +73,9 @@ static void trans_cb(struct spi_transaction *trans __attribute__((unused)))
 void bluegiga_init(void)
 {
 
-  LED_INIT(3);
+#ifdef MODEM_LED
+  LED_INIT(MODEM_LED);
+#endif
 
   // configure the SPI bus.
   bluegiga_spi.input_buf      = bluegiga_p.work_rx;
@@ -108,7 +110,7 @@ void bluegiga_init(void)
   // Configure generic device
   bluegiga_p.device.periph    = (void *)(&bluegiga_p);
   bluegiga_p.device.check_free_space = (check_free_space_t) true_function;
-  bluegiga_p.device.transmit  = (transmit_t) dev_transmit;
+  bluegiga_p.device.put_byte  = (put_byte_t) dev_transmit;
   bluegiga_p.device.send_message = (send_message_t) dev_send;
 
   // set DRDY interrupt pin for spi master triggered on falling edge
@@ -182,7 +184,7 @@ void bluegiga_receive(void)
 
     if (packet_len > bluegiga_spi.input_length) {
       // Direct message from Bluegiga
-      int k_rssi, i;
+      // int k_rssi, i;
       switch (packet_len) {
         case 0xff:        // Connection lost with ground station!
           // Stop datalink
@@ -191,16 +193,18 @@ void bluegiga_receive(void)
           bluegiga_p.tx_insert_idx    = 0;
           bluegiga_p.tx_extract_idx   = 0;
 
-          LED_OFF(3);
+#ifdef MODEM_LED
+          LED_OFF(MODEM_LED);
+#endif
           coms_status = BLUEGIGA_UNINIT;
           gpio_set(BLUEGIGA_DRDY_GPIO, BLUEGIGA_DRDY_GPIO_PIN);     // Reset interrupt pin
           break;
-        /*case 0xfe:        // rssi data
-          k_rssi = bluegiga_p.work_rx[2];
-          for (i = 0; i < k_rssi; i++) {
-            bluegiga_rssi[i] = bluegiga_p.work_rx[3 + i];
-          }
-          break;*/
+          /*case 0xfe:        // rssi data
+            k_rssi = bluegiga_p.work_rx[2];
+            for (i = 0; i < k_rssi; i++) {
+              bluegiga_rssi[i] = bluegiga_p.work_rx[3 + i];
+            }
+            break;*/
         case 0xfd:        // interrupt handled on bluegiga
           gpio_set(BLUEGIGA_DRDY_GPIO, BLUEGIGA_DRDY_GPIO_PIN);     // Reset interrupt pin
 
