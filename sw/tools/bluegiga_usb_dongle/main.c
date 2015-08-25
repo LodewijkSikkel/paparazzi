@@ -42,7 +42,7 @@ unsigned int  insert_idx[8] = {0, 0, 0, 0, 0, 0, 0, 0},
                                   send_insert_idx[8] = {0, 0, 0, 0, 0, 0, 0, 0},
                                       send_extract_idx[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
-#define DEBUG
+// #define DEBUG
 
 #define CLARG_PORT 1
 #define CLARG_ACTION 2
