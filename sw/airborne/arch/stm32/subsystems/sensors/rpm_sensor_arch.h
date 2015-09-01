@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2015 The Paparazzi Team
+ * Copyright (C) Bart Slinger
  *
- * This file is part of paparazzi.
+ * This file is part of paparazzi
  *
  * paparazzi is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,27 +14,20 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with paparazzi; see the file COPYING.  If not, write to
- * the Free Software Foundation, 59 Temple Place - Suite 330,
- * Boston, MA 02111-1307, USA.
- *
+ * along with paparazzi; see the file COPYING.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ */
+/**
+ * @file "modules/rpm_sensor/rpm_sensor.h"
+ * @author Bart Slinger
+ * Measure the ppm signal of the RPM sensor
  */
 
-#ifndef LOGGER_UART_H_
-#define LOGGER_UART_H_
+#ifndef RPM_SENSOR_ARCH_H
+#define RPM_SENSOR_ARCH_H
 
 #include "std.h"
 
-extern void logger_uart_init(void);
-extern void logger_uart_periodic(void);
+extern void rpm_sensor_arch_init(void);
 
-#define PACKED __attribute__((__packed__))
-
-struct PACKED logger_uart_data_struct {
-    uint16_t start; // 1 
-    int16_t acc_x;  // 2
-    int16_t acc_y;
-    int16_t acc_z;
-};
-
-#endif /* LOGGER_UART_H_ */
+#endif

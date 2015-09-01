@@ -24,9 +24,10 @@
 
 #include "modules/sensors/dist_imu_mpu6050.h"
 
+#include "mcu_periph/spi.h"
 #include "state.h"
 #include "subsystems/imu.h"
-#include "mcu_periph/spi.h"
+#include "subsystems/sensors/rpm_sensor.h"
 
 struct high_speed_logger_spi_link_data high_speed_logger_spi_link_data;
 struct spi_transaction high_speed_logger_spi_link_transaction;
@@ -64,7 +65,7 @@ void high_speed_logger_spi_link_periodic(void)
     high_speed_logger_spi_link_data.acc_x      = imu.accel_unscaled.x;
     high_speed_logger_spi_link_data.acc_y      = imu.accel_unscaled.y;
     high_speed_logger_spi_link_data.acc_z      = imu.accel_unscaled.z;
-    high_speed_logger_spi_link_data.mag_x      = imu.mag_unscaled.x;
+    high_speed_logger_spi_link_data.mag_x      = rpm_sensor.motor_frequency; // temporarily replaced
     high_speed_logger_spi_link_data.mag_y      = imu.mag_unscaled.y;
     high_speed_logger_spi_link_data.mag_z      = imu.mag_unscaled.z;
     high_speed_logger_spi_link_data.phi        = stateGetNedToBodyEulers_i()->phi;

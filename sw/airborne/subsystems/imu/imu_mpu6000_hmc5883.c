@@ -114,10 +114,10 @@ void imu_mpu_hmc_event(void)
   /* HMC58XX event task */
   hmc58xx_event(&imu_mpu_hmc.hmc);
   if (imu_mpu_hmc.hmc.data_available) {
-    /* mag rotated by 90deg around z axis relative to MPU */
-    imu.mag_unscaled.x =  imu_mpu_hmc.hmc.data.vect.y;
+    /* mag rotated by 90deg around all axes relative to MPU */
+    imu.mag_unscaled.x = -imu_mpu_hmc.hmc.data.vect.y;
     imu.mag_unscaled.y = -imu_mpu_hmc.hmc.data.vect.x;
-    imu.mag_unscaled.z =  imu_mpu_hmc.hmc.data.vect.z;
+    imu.mag_unscaled.z = -imu_mpu_hmc.hmc.data.vect.z;
     imu_mpu_hmc.hmc.data_available = FALSE;
     imu_scale_mag(&imu);
     AbiSendMsgIMU_MAG_INT32(IMU_MPU6000_HMC_ID, now_ts, &imu.mag);

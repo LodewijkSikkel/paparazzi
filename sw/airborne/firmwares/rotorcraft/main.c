@@ -73,6 +73,8 @@ PRINT_CONFIG_MSG_VALUE("USE_BARO_BOARD is TRUE, reading onboard baro: ", BARO_BO
 #endif
 #include "subsystems/ins.h"
 
+#include "subsystems/sensors/rpm_sensor.h"
+
 #include "state.h"
 
 #include "firmwares/rotorcraft/main.h"
@@ -186,6 +188,8 @@ STATIC_INLINE void main_init(void)
 #endif
 
   ins_init();
+
+  rpm_sensor_init();
 
 #if USE_GPS
   gps_init();
