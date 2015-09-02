@@ -42,9 +42,9 @@
 #include "subsystems/radio_control.h"
 #endif
 
-// #if defined GPS_DATALINK
-// #include "subsystems/gps/gps_datalink.h"
-// #endif
+#if defined GPS_DATALINK
+#include "subsystems/gps/gps_datalink.h"
+#endif
 
 #include "firmwares/rotorcraft/navigation.h"
 
