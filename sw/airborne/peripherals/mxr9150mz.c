@@ -30,7 +30,7 @@
 
 static struct adc_buf mxr_adc_buf[NB_ANALOG_MXR_ADC];
 
-void mpu60x0_spi_init(struct Mxr9150mz *mxr)
+void mxr9150mz_init(struct Mxr9150mz *mxr)
 {
   // Set overrun to 0
   mxr->overrun = 0;
@@ -57,6 +57,28 @@ void mxr9150mz_start_configure(struct Mxr9150mz *mxr)
 void mxr9150mz_read(struct Mxr9150mz *mxr)
 {
   if (mxr->initialized) {
-    
+    // Actual Nr of ADC measurements per channel per periodic loop
+    static int last_head = 0;
+
+    uint32_t now_ts = get_sys_time_usec();
+
+    mxr->overrun = mxr_adc_buf[0].head - last_head;
+    if (mxr->overrun < 0) {
+      mxr->overrun += ADC_CHANNEL_ACCEL_NB_SAMPLES;
+    }
+    last_head = mxr_adc_buf[0].head;
+
+    // Read All Measurements
+    #ifdef ADC_CHANNEL_ACCEL_X
+      mxr->data.vect.x = mxr_adc_buf[0].sum / ADC_CHANNEL_ACCEL_NB_SAMPLES;
+    #endif
+    #ifdef ADC_CHANNEL_ACCEL_Y
+      mxr->data.vect.y = mxr_adc_buf[1].sum / ADC_CHANNEL_ACCEL_NB_SAMPLES;
+    #endif
+    #ifdef ADC_CHANNEL_ACCEL_Z
+      mxr->data.vect.z = mxr_adc_buf[2].sum / ADC_CHANNEL_ACCEL_NB_SAMPLES;
+    #endif
+
+    mxr->data_available = TRUE;
   }
 }

@@ -41,6 +41,7 @@
 
 #include "subsystems/imu/imu_mpu60x0_defaults.h"
 #include "peripherals/mpu60x0_spi.h"
+#include "peripherals/mxr9150mz.h"
 #include "peripherals/hmc58xx.h"
 
 struct ImuMpu60x0Mxr9150mzHmc5883 {
