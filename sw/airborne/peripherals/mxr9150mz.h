@@ -39,7 +39,8 @@ struct Mxr9150mz {
 	union {
     	struct Int16Vect3 vect; ///< accel data vector in accel coordinate system
     	int16_t value[3];       ///< accel data values accessible by channel index
-  	} data_accel;
+  	} data;
+  bool_t data_available;
 };
 
 // Functions
