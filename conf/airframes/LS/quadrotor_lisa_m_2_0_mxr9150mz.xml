@@ -16,7 +16,7 @@
         <define name="RADIO_MODE" value="RADIO_FLAP"/>
         <!--define name="USE_KILL_SWITCH_FOR_MOTOR_ARMING" value="1"/-->
       </subsystem>
-      <configure name="NO_LUFTBOOT" value="1"/>
+      <!-- <configure name="NO_LUFTBOOT" value="1"/> -->
     </target>
 
     <target name="nps" board="pc">
@@ -33,26 +33,32 @@
       <configure name="ACCEL_X" value="ADC_1"/>
       <configure name="ACCEL_Y" value="ADC_2"/>
       <configure name="ACCEL_Z" value="ADC_3"/>
+      <!-- <define name="USE_ADC_1" value="1"/> -->
+      <!-- <define name="ADC_CHANNEL_ACCEL_X" value="ADC_1"/> -->
+      <define name="ADC_CHANNEL_ACCEL_NB_SAMPLES" value="16"/>
     </subsystem>
     <subsystem name="gps"           type="ublox"/>
     <subsystem name="stabilization" type="int_quat"/>
-    <subsystem name="ahrs"          type="int_cmpl_quat">
+    <subsystem name="ahrs"          type="int_cmpl_euler">
       <define name="AHRS_GRAVITY_HEURISTIC_FACTOR" value="30"/>
     </subsystem>
     <subsystem name="ins"/>
   </firmware>
 
   <firmware name="test_progs">
+    <target name="test_adc" board="lisa_m_2.0">
+      <define name="USE_ADC_1" value="1"/>
+    </target>
   </firmware>
 
   <modules>
   </modules>
 
   <servos driver="Pwm">
-    <servo name="MOTOR_1" no="0" min="1000" neutral="1100" max="1900"/>
-    <servo name="MOTOR_2" no="1" min="1000" neutral="1100" max="1900"/>
-    <servo name="MOTOR_3" no="2" min="1000" neutral="1100" max="1900"/>
-    <servo name="MOTOR_4" no="3" min="1000" neutral="1100" max="1900"/>
+    <servo name="MOTOR_1" no="0" min="1148" neutral="1200" max="1832"/>
+    <servo name="MOTOR_2" no="1" min="1148" neutral="1200" max="1832"/>
+    <servo name="MOTOR_3" no="2" min="1148" neutral="1200" max="1832"/>
+    <servo name="MOTOR_4" no="3" min="1148" neutral="1200" max="1832"/>
   </servos>
 
   <commands>
@@ -71,7 +77,7 @@
     <!-- order (and rotation direction) : NE (CW), SE (CCW), SW (CW), NW (CCW) -->
     <define name="ROLL_COEF"   value="{ -256, -256,  256,  256 }"/>
     <define name="PITCH_COEF"  value="{  256, -256, -256,  256 }"/>
-    <define name="YAW_COEF"    value="{ -256,  256, -256,  256 }"/>
+    <define name="YAW_COEF"    value="{  256, -256,  256, -256 }"/>
     <define name="THRUST_COEF" value="{  256,  256,  256,  256 }"/>
   </section>
 
@@ -84,12 +90,15 @@
   </command_laws>
 
   <section name="IMU" prefix="IMU_">
-    <define name="ACCEL_X_NEUTRAL" value="-9"/>
-    <define name="ACCEL_Y_NEUTRAL" value="24"/>
-    <define name="ACCEL_Z_NEUTRAL" value="65"/>
-    <define name="ACCEL_X_SENS" value="4.90393762843" integer="16"/>
+    <define name="ACCEL_X_NEUTRAL" value="2055"/>
+    <define name="ACCEL_Y_NEUTRAL" value="2050"/>
+    <define name="ACCEL_Z_NEUTRAL" value="2070"/>
+<!--     <define name="ACCEL_X_SENS" value="4.90393762843" integer="16"/>
     <define name="ACCEL_Y_SENS" value="4.919330721" integer="16"/>
-    <define name="ACCEL_Z_SENS" value="4.85197383186" integer="16"/>
+    <define name="ACCEL_Z_SENS" value="4.85197383186" integer="16"/> -->
+    <define name="ACCEL_X_SENS" value="50" integer="16"/>
+    <define name="ACCEL_Y_SENS" value="50" integer="16"/>
+    <define name="ACCEL_Z_SENS" value="50" integer="16"/>
 
     <!-- replace this with your own calibration -->
     <define name="MAG_X_NEUTRAL" value="-88"/>

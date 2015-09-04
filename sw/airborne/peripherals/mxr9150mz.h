@@ -38,7 +38,7 @@ struct Mxr9150mz {
 	bool_t initialized;
 	union {
     	struct Int16Vect3 vect; ///< accel data vector in accel coordinate system
-    	int16_t value[3];       ///< accel data values accessible by channel index
+    	uint16_t values[3];     ///< accel data values accessible by channel index
   	} data;
   bool_t data_available;
 };
@@ -50,9 +50,9 @@ extern void mxr9150mz_read(struct Mxr9150mz *mxr);
 extern void mxr9150mz_event(struct Mxr9150mz *mxr);
 
 /// convenience function: read or start configuration if not already initialized
-static inline void mxr9150mz_periodic(struct Mpu60x0_Spi *mxr)
+static inline void mxr9150mz_periodic(struct Mxr9150mz *mxr)
 {
-  if (mxr->config.initialized) {
+  if (mxr->initialized) {
     mxr9150mz_read(mxr);
   } else {
     mxr9150mz_start_configure(mxr);

@@ -92,10 +92,8 @@ void imu_periodic(void)
 {
   mpu60x0_spi_periodic(&imu_mpu_mxr_hmc.mpu);
 
-  /* Read Memsic R9150M as fast as possible 
-   * (~17Hz according to datasheet)
-   */
-  RunOnceEvery(25, memsicR9150M_periodic(&imu_mpu_mxr_hmc.mxr));
+  // Read MXR9150MZ as fast as possible 
+  mxr9150mz_periodic(&imu_mpu_mxr_hmc.mxr);
 
   /* Read HMC58XX every 10 times of main freq
    * at ~50Hz (main loop for rotorcraft: 512Hz)
@@ -103,7 +101,7 @@ void imu_periodic(void)
   RunOnceEvery(10, hmc58xx_periodic(&imu_mpu_mxr_hmc.hmc));
 }
 
-void imu_mpu_hmc_event(void)
+void imu_mpu_mxr_hmc_event(void)
 {
   uint32_t now_ts = get_sys_time_usec();
 
@@ -133,9 +131,9 @@ void imu_mpu_hmc_event(void)
   hmc58xx_event(&imu_mpu_mxr_hmc.hmc);
   if (imu_mpu_mxr_hmc.hmc.data_available) {
     /* mag rotated by 90deg around z axis relative to MPU */
-    imu.mag_unscaled.x =  imu_mpu_mxr_hmc.hmc.data.vect.y;
+    imu.mag_unscaled.x = -imu_mpu_mxr_hmc.hmc.data.vect.y;
     imu.mag_unscaled.y = -imu_mpu_mxr_hmc.hmc.data.vect.x;
-    imu.mag_unscaled.z =  imu_mpu_mxr_hmc.hmc.data.vect.z;
+    imu.mag_unscaled.z = -imu_mpu_mxr_hmc.hmc.data.vect.z;
     imu_mpu_mxr_hmc.hmc.data_available = FALSE;
     imu_scale_mag(&imu);
     AbiSendMsgIMU_MAG_INT32(IMU_MPU60X0_MXR9150MZ_HMC5883_ID, now_ts, &imu.mag);
