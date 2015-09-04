@@ -28,13 +28,6 @@
 #ifndef IMU_MPU60x0_MXR9150MZ_HMC5883_H
 #define IMU_MPU60x0_MXR9150MZ_HMC5883_H
 
-#define IMU_ACCEL_X_SENS_NUM 1
-#define IMU_ACCEL_X_SENS_DEN 1
-#define IMU_ACCEL_Y_SENS_NUM 1
-#define IMU_ACCEL_Y_SENS_DEN 1
-#define IMU_ACCEL_Z_SENS_NUM 1
-#define IMU_ACCEL_Z_SENS_DEN 1
-
 #include "std.h"
 #include "generated/airframe.h"
 #include "subsystems/imu.h"

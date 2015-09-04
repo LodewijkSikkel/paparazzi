@@ -51,16 +51,16 @@
  * fixed point sens: 9.81 [m/s^2] / 2048 [LSB/g] * 2^INT32_ACCEL_FRAC
  * sens = 9.81 / 2048 * 1024 = 4.905
  */
-// #if !defined IMU_ACCEL_X_SENS & !defined IMU_ACCEL_Y_SENS & !defined IMU_ACCEL_Z_SENS
-// #define IMU_ACCEL_X_SENS 4.905
-// #define IMU_ACCEL_X_SENS_NUM 4905
-// #define IMU_ACCEL_X_SENS_DEN 1000
-// #define IMU_ACCEL_Y_SENS 4.905
-// #define IMU_ACCEL_Y_SENS_NUM 4905
-// #define IMU_ACCEL_Y_SENS_DEN 1000
-// #define IMU_ACCEL_Z_SENS 4.905
-// #define IMU_ACCEL_Z_SENS_NUM 4905
-// #define IMU_ACCEL_Z_SENS_DEN 1000
-// #endif
+#if !defined IMU_ACCEL_X_SENS & !defined IMU_ACCEL_Y_SENS & !defined IMU_ACCEL_Z_SENS
+#define IMU_ACCEL_X_SENS 4.905
+#define IMU_ACCEL_X_SENS_NUM 4905
+#define IMU_ACCEL_X_SENS_DEN 1000
+#define IMU_ACCEL_Y_SENS 4.905
+#define IMU_ACCEL_Y_SENS_NUM 4905
+#define IMU_ACCEL_Y_SENS_DEN 1000
+#define IMU_ACCEL_Z_SENS 4.905
+#define IMU_ACCEL_Z_SENS_NUM 4905
+#define IMU_ACCEL_Z_SENS_DEN 1000
+#endif
 
 #endif /* IMU_MPU60X0_DEFAULTS_H */

@@ -23,7 +23,6 @@
 
 include $(CFG_SHARED)/spi_master.makefile
 
-
 IMU_CFLAGS  = -DIMU_TYPE_H=\"imu/imu_mpu60x0_mxr9150mz_hmc5883.h\"
 IMU_SRCS    = $(SRC_SUBSYSTEMS)/imu.c
 IMU_SRCS   += $(SRC_SUBSYSTEMS)/imu/imu_mpu60x0_mxr9150mz_hmc5883.c
@@ -41,18 +40,6 @@ IMU_SRCS   += peripherals/hmc58xx.c
 # for fixedwing firmware and ap only
 ifeq ($(TARGET), ap)
   IMU_CFLAGS  += -DUSE_IMU
-endif
-
-# set the adcs
-ADC_ACCEL_NB_SAMPLES ?= 16
-ifneq ($(ACCEL_X),)
-imu_CFLAGS += -DADC_CHANNEL_ACCEL_X=$(ACCEL_X) -DUSE_$(ACCEL_X)
-endif
-ifneq ($(ACCEL_Y),)
-imu_CFLAGS += -DADC_CHANNEL_ACCEL_Y=$(ACCEL_Y) -DUSE_$(ACCEL_Y)
-endif
-ifneq ($(ACCEL_Z),)
-imu_CFLAGS += -DADC_CHANNEL_ACCEL_Z=$(ACCEL_Z) -DUSE_$(ACCEL_Z)
 endif
 
 # set default i2c bus
@@ -103,6 +90,16 @@ IMU_CFLAGS += -DUSE_$(IMU_MPU_SPI_DEV_UPPER)
 IMU_CFLAGS += -DIMU_MPU_SPI_SLAVE_IDX=$(IMU_MPU_SPI_SLAVE_IDX)
 IMU_CFLAGS += -DUSE_$(IMU_MPU_SPI_SLAVE_IDX)
 
+# set the adcs
+ifneq ($(ACCEL_X),)
+IMU_CFLAGS += -DADC_CHANNEL_ACCEL_X=$(ACCEL_X) -DUSE_$(ACCEL_X)
+endif
+ifneq ($(ACCEL_Y),)
+IMU_CFLAGS += -DADC_CHANNEL_ACCEL_Y=$(ACCEL_Y) -DUSE_$(ACCEL_Y)
+endif
+ifneq ($(ACCEL_Z),)
+IMU_CFLAGS += -DADC_CHANNEL_ACCEL_Z=$(ACCEL_Z) -DUSE_$(ACCEL_Z)
+endif
 
 # add it for all targets except sim, fbw and nps
 ifeq (,$(findstring $(TARGET),sim fbw nps))

@@ -25,8 +25,13 @@
  * Driver for the MXR9150MZ
  */
 
+// Include own header
+#include "peripherals/mxr9150mz.h"
+
 #include "mcu_periph/adc.h"
-#include "peripherals/mpu60x0_spi.h"
+
+#include "led.h"
+#include "subsystems/datalink/downlink.h"
 
 static struct adc_buf mxr_adc_buf[NB_ANALOG_MXR_ADC];
 
@@ -37,13 +42,13 @@ void mxr9150mz_init(struct Mxr9150mz *mxr)
 
   mxr->initialized = FALSE;
 
-  #ifdef ADC_CHANNEL_GYRO_P
+  #ifdef ADC_CHANNEL_ACCEL_X
     adc_buf_channel(ADC_CHANNEL_ACCEL_X, &mxr_adc_buf[0], ADC_CHANNEL_ACCEL_NB_SAMPLES);
   #endif
-  #ifdef ADC_CHANNEL_GYRO_Q
+  #ifdef ADC_CHANNEL_ACCEL_Y
     adc_buf_channel(ADC_CHANNEL_ACCEL_Y, &mxr_adc_buf[1], ADC_CHANNEL_ACCEL_NB_SAMPLES);
   #endif
-  #ifdef ADC_CHANNEL_GYRO_R
+  #ifdef ADC_CHANNEL_ACCEL_Z
     adc_buf_channel(ADC_CHANNEL_ACCEL_Z, &mxr_adc_buf[2], ADC_CHANNEL_ACCEL_NB_SAMPLES);
   #endif
 }
@@ -57,10 +62,8 @@ void mxr9150mz_start_configure(struct Mxr9150mz *mxr)
 void mxr9150mz_read(struct Mxr9150mz *mxr)
 {
   if (mxr->initialized) {
-    // Actual Nr of ADC measurements per channel per periodic loop
+    // Actual nb of ADC measurements per channel per periodic loop
     static int last_head = 0;
-
-    uint32_t now_ts = get_sys_time_usec();
 
     mxr->overrun = mxr_adc_buf[0].head - last_head;
     if (mxr->overrun < 0) {
