@@ -131,6 +131,7 @@ void dl_parse_msg(void)
       break;
 #endif // RADIO_CONTROL_TYPE_DATALINK
 #if defined GPS_DATALINK
+#if GPS_USE_DATALINK_SMALL
     case DL_REMOTE_GPS_SMALL : 
       // Check if the GPS is for this AC
       if (DL_REMOTE_GPS_SMALL_ac_id(dl_buffer) != AC_ID) { 
@@ -142,7 +143,7 @@ void dl_parse_msg(void)
         DL_REMOTE_GPS_SMALL_pos_xyz(dl_buffer),
         DL_REMOTE_GPS_SMALL_speed_xy(dl_buffer));
       break;
-
+#endif
     case DL_REMOTE_GPS :
       // Check if the GPS is for this AC
       if (DL_REMOTE_GPS_ac_id(dl_buffer) != AC_ID) { break; }
