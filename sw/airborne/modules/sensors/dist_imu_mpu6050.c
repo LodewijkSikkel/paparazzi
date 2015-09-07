@@ -111,12 +111,12 @@ void dist_imu_event(void)
     dist_imu.accel[0].z = -((dist_imu.accel_unscaled[0].z - dist_imu.accel_neutral[0].z) * IMU_ACCEL_Z_SIGN *
                        IMU_ACCEL_Z_SENS_NUM) / IMU_ACCEL_Z_SENS_DEN;
 
-    RunOnceEvery(10, { 
-      DOWNLINK_SEND_DIST_IMU_GYRO_SCALED(DefaultChannel, DefaultDevice,
-                                         &dist_imu.gyro[0].p,
-                                         &dist_imu.gyro[0].q,
-                                         &dist_imu.gyro[0].r);
-    });
+    // RunOnceEvery(10, { 
+    //   DOWNLINK_SEND_DIST_IMU_GYRO_SCALED(DefaultChannel, DefaultDevice,
+    //                                      &dist_imu.gyro[0].p,
+    //                                      &dist_imu.gyro[0].q,
+    //                                      &dist_imu.gyro[0].r);
+    // });
     
     RunOnceEvery(10, { 
       DOWNLINK_SEND_DIST_IMU_ACCEL_SCALED(DefaultChannel, DefaultDevice,

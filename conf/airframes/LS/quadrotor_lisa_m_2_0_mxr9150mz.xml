@@ -33,25 +33,21 @@
       <configure name="ACCEL_X" value="ADC_1"/>
       <configure name="ACCEL_Y" value="ADC_2"/>
       <configure name="ACCEL_Z" value="ADC_3"/>
-      <!-- <define name="USE_ADC_1" value="1"/> -->
-      <!-- <define name="ADC_CHANNEL_ACCEL_X" value="ADC_1"/> -->
       <define name="ADC_CHANNEL_ACCEL_NB_SAMPLES" value="16"/>
     </subsystem>
-    <subsystem name="gps"           type="ublox"/>
+    <subsystem name="gps"           type="datalink"/>
     <subsystem name="stabilization" type="int_quat"/>
-    <subsystem name="ahrs"          type="int_cmpl_euler">
+    <subsystem name="ahrs"          type="int_cmpl_quat">
       <define name="AHRS_GRAVITY_HEURISTIC_FACTOR" value="30"/>
     </subsystem>
     <subsystem name="ins"/>
   </firmware>
 
-  <firmware name="test_progs">
-    <target name="test_adc" board="lisa_m_2.0">
-      <define name="USE_ADC_1" value="1"/>
-    </target>
-  </firmware>
-
   <modules>
+    <load name="dist_imu_mpu6050.xml">
+      <define name="IMU_MPU60X0_I2C_DEV" value="i2c2"/>
+    </load>
+    <load name="logger_uart.xml"/>
   </modules>
 
   <servos driver="Pwm">

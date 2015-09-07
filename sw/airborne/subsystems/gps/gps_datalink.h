@@ -36,7 +36,7 @@
 
 extern bool_t gps_available;
 #ifdef GPS_USE_DATALINK_SMALL
-void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_xy);
+extern void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_xy);
 #endif
 extern void parse_gps_datalink(uint8_t numsv, int32_t ecef_x, int32_t ecef_y, int32_t ecef_z,
                                int32_t lat, int32_t lon, int32_t alt, int32_t hmsl,
