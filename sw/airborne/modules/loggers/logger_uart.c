@@ -27,7 +27,7 @@
 #include "subsystems/imu.h"
 #include "mcu_periph/uart.h"
 
-#include "modules/sensors/dist_imu_mpu6050.h"
+// #include "modules/sensors/dist_imu_mpu6050.h"
 
 struct logger_uart_data_struct logger_uart_data;
 
@@ -37,15 +37,23 @@ void logger_uart_init(void)
 
 void logger_uart_periodic(void)
 {
-  logger_uart_data.start = 0xFFFF; // start byte
+  logger_uart_data.start = 0xFFFF; // start byte used for synchronization
 
-  logger_uart_data.acc_x = dist_imu.accel_unscaled[0].x;
-  logger_uart_data.acc_y = dist_imu.accel_unscaled[0].y;
-  logger_uart_data.acc_z = dist_imu.accel_unscaled[0].z;
+  logger_uart_data.gyro_x = imu.gyro_unscaled.p;
+  logger_uart_data.gyro_y = imu.gyro_unscaled.q;
+  logger_uart_data.gyro_z = imu.gyro_unscaled.r;
+
+  logger_uart_data.acc_x = imu.accel_unscaled.x;
+  logger_uart_data.acc_y = imu.accel_unscaled.y;
+  logger_uart_data.acc_z = imu.accel_unscaled.z;
+
+  // logger_uart_data.acc_x = dist_imu.accel_unscaled[0].x;
+  // logger_uart_data.acc_y = dist_imu.accel_unscaled[0].y;
+  // logger_uart_data.acc_z = dist_imu.accel_unscaled[0].z;
 
   uint8_t crc = 0;
   uint8_t *p = (uint8_t*) &logger_uart_data;
-  for (int i=0; i<8; i++)
+  for (int i=0; i<14; i++)
   {
     crc += p[i];
     uart_put_byte(&uart3, p[i]);

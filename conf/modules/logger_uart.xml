@@ -13,7 +13,7 @@
     <file name="logger_uart.c"/>
     <raw>
     ap.CFLAGS += -DUSE_UART3
-    ap.CFLAGS += -DUART3_BAUD=B57600
+    ap.CFLAGS += -DUART3_BAUD=B115200
     </raw>
   </makefile>
 </module>

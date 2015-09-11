@@ -31,8 +31,11 @@ extern void logger_uart_periodic(void);
 #define PACKED __attribute__((__packed__))
 
 struct PACKED logger_uart_data_struct {
-    uint16_t start; // 1 
-    int16_t acc_x;  // 2
+    uint16_t start; // 1
+    int16_t gyro_x; // 2
+    int16_t gyro_y;
+    int16_t gyro_z;
+    int16_t acc_x;  // 5
     int16_t acc_y;
     int16_t acc_z;
 };

@@ -27,6 +27,11 @@
 #define RPM_SENSOR_H
 
 #include "std.h"
+#include "generated/airframe.h"
+
+#ifndef RPM_SENSOR_PRESCALAR
+#error A pole-dependent prescalar is required!
+#endif
 
 /**
  * Architecture dependent code

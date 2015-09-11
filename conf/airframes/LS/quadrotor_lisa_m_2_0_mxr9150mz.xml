@@ -35,19 +35,21 @@
       <configure name="ACCEL_Z" value="ADC_3"/>
       <define name="ADC_CHANNEL_ACCEL_NB_SAMPLES" value="16"/>
     </subsystem>
+    <!-- <subsystem name="imu"           type="mpu6000_hmc5883"/> -->
     <subsystem name="gps"           type="datalink"/>
     <subsystem name="stabilization" type="int_quat"/>
     <subsystem name="ahrs"          type="int_cmpl_quat">
       <define name="AHRS_GRAVITY_HEURISTIC_FACTOR" value="30"/>
     </subsystem>
     <subsystem name="ins"/>
+    <subsystem name="rpm_sensor"    type="ppm"/>
   </firmware>
 
   <modules>
     <load name="dist_imu_mpu6050.xml">
       <define name="IMU_MPU60X0_I2C_DEV" value="i2c2"/>
     </load>
-    <load name="logger_uart.xml"/>
+    <load name="logger_spi_link.xml"/>
   </modules>
 
   <servos driver="Pwm">
@@ -86,7 +88,10 @@
   </command_laws>
 
   <section name="IMU" prefix="IMU_">
-    <define name="ACCEL_X_NEUTRAL" value="2055"/>
+<!--     <define name="ACCEL_X_NEUTRAL" value="0"/>
+    <define name="ACCEL_Y_NEUTRAL" value="0"/>
+    <define name="ACCEL_Z_NEUTRAL" value="0"/> -->
+   <define name="ACCEL_X_NEUTRAL" value="2055"/>
     <define name="ACCEL_Y_NEUTRAL" value="2050"/>
     <define name="ACCEL_Z_NEUTRAL" value="2070"/>
 <!--     <define name="ACCEL_X_SENS" value="4.90393762843" integer="16"/>
@@ -141,12 +146,16 @@
     <define name="DDGAIN_R" value="300"/>
   </section>
 
- <section name="INS" prefix="INS_">
+  <section name="INS" prefix="INS_">
     <!-- Use GPS altitude measurments and set the R gain -->
     <!-- define name="USE_GPS_ALT" value="1"/ -->
     <!-- define name="VFF_R_GPS" value="0.01"/ -->
   </section>
 
+  <section name="RPM_SENSOR" prefix="RPM_SENSOR_">
+    <define name="PRESCALAR" value="7"/>
+  </section>
+ 
   <section name="STABILIZATION_ATTITUDE" prefix="STABILIZATION_ATTITUDE_">
     <!-- setpoints -->
     <define name="SP_MAX_PHI" value="45." unit="deg"/>

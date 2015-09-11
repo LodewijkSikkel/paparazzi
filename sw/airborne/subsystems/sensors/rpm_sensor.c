@@ -52,7 +52,7 @@ void rpm_sensor_process_pulse(uint16_t cnt, uint8_t overflow_cnt)
   if ((cnt > rpm_sensor.previous_cnt && overflow_cnt > 0) || (overflow_cnt > 1)) {
     rpm_sensor.motor_frequency = 0.0f;
   } else {
-    rpm_sensor.motor_frequency = 281250.0/diff/12.0; // 72Mhz CPU with a prescaler of 256
+    rpm_sensor.motor_frequency = 281250.0/diff/RPM_SENSOR_PRESCALAR; // 72Mhz CPU with a prescaler of 256
   }
 
   /* Remember count */
