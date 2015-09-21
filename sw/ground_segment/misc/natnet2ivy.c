@@ -68,6 +68,7 @@ char *ivy_bus                   = "127.255.255.255:2010";
 uint32_t freq_transmit          = 30;     ///< Transmitting frequency in Hz
 uint16_t min_velocity_samples   = 4;      ///< The amount of position samples needed for a valid velocity
 bool small_packets              = FALSE;
+bool att                        = FALSE;
 
 /** Connection timeout when not receiving **/
 #define CONNECTION_TIMEOUT          .5
@@ -550,6 +551,15 @@ gboolean timeout_transmit_callback(gpointer data) {
         (int)(heading*10000000.0));             //int32 Course in rad*1e7
     }
 
+    if (att) {
+      IvySendMsg("0 REMOTE_GPS_ATT %d %d %d %d %d %d", aircrafts[rigidBodies[i].id].ac_id, // uint8 rigid body ID (1 byte)
+        0,
+        (int)(orient.qi*1e5),                   // qi*1e5
+        (int)(orient.qx*1e5),                   // qx*1e5
+        (int)(orient.qy*1e5),                   // qy*1e5
+        (int)(orient.qz*1e5));                  // qz*1e5
+    }
+
     // Reset the velocity differentiator if we calculated the velocity
     if(rigidBodies[i].nVelocitySamples >= min_velocity_samples) {
       rigidBodies[i].vel_x = 0;
@@ -606,7 +616,8 @@ void print_help(char* filename) {
 
     "   -tf <freq>                Transmit frequency to the ivy bus in hertz (60)\n"
     "   -vel_samples <samples>    Minimum amount of samples for the velocity differentiator (4)\n"
-    "   -small                    Send small packets instead of bigger (FALSE)\n\n"
+    "   -small                    Send small packets instead of bigger (FALSE)\n"
+    "   -att                      Send the attitude in quaternions\n\n"
 
     "   -ivy_bus <address:port>   Ivy bus address and port (127.255.255.255:2010)\n";
   fprintf(stderr, usage, filename);
@@ -731,6 +742,10 @@ static void parse_options(int argc, char** argv) {
     // Set to use small packets
     else if(strcmp(argv[i], "-small") == 0) {
       small_packets = TRUE;
+    }
+    // Set to send the attitude in quaternions
+    else if(strcmp(argv[i], "-att") == 0) {
+      att = TRUE;
     }
 
     // Set the ivy bus

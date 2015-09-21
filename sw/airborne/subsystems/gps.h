@@ -29,6 +29,7 @@
 
 
 #include "std.h"
+#include "math/pprz_algebra_float.h"
 #include "math/pprz_geodetic_int.h"
 
 #include "mcu_periph/sys_time.h"
@@ -73,6 +74,11 @@ struct GpsState {
   uint16_t gspeed;               ///< norm of 2d ground speed in cm/s
   uint16_t speed_3d;             ///< norm of 3d speed in cm/s
   int32_t course;                ///< GPS course over ground in rad*1e7, [0, 2*Pi]*1e7 (CW/north)
+
+  struct Int32Quat quat_i;       ///< unscaled quaternion (*1e5)
+  struct FloatQuat quat_f;       ///< GPS attitude in quaternions
+  struct FloatEulers eulers_f;    ///< GPS attitude in Euler angles
+
   uint32_t pacc;                 ///< position accuracy in cm
   uint32_t sacc;                 ///< speed accuracy in cm/s
   uint32_t cacc;                 ///< course accuracy in rad*1e7

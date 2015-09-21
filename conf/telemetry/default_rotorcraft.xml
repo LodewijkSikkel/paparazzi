@@ -123,6 +123,7 @@
       <message name="HFF"                   period=".05"/>
 	  <message name="HFF_GPS"               period=".03"/>
       <message name="HFF_DBG"               period=".2"/>
+      <message name="GPS"		    period=".25"/>
     </mode>
 
     <mode name="aligner">

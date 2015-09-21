@@ -25,6 +25,7 @@
  *
  */
 
+
 #define DATALINK_C
 #define MODULES_DATALINK_C
 
@@ -167,6 +168,22 @@ void dl_parse_msg(void)
         DL_REMOTE_GPS_tow(dl_buffer),
         DL_REMOTE_GPS_course(dl_buffer));
       break;
+
+    case DL_REMOTE_GPS_ATT : 
+
+      // Check if the GPS is for this AC
+      if (DL_REMOTE_GPS_ATT_ac_id(dl_buffer) != AC_ID) 
+        break; 
+
+      // Parse the attitude data
+      parse_gps_att(
+        DL_REMOTE_GPS_ATT_numsv(dl_buffer),
+        DL_REMOTE_GPS_ATT_qi(dl_buffer),
+        DL_REMOTE_GPS_ATT_qx(dl_buffer),
+        DL_REMOTE_GPS_ATT_qy(dl_buffer),
+        DL_REMOTE_GPS_ATT_qz(dl_buffer));
+      break;
+
 #endif
 #if USE_GPS
     case DL_GPS_INJECT :

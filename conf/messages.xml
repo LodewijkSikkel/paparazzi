@@ -76,6 +76,9 @@
      <field name="alt"        type="int32"  unit="mm" alt_unit="m">Altitude above geoid (MSL)</field>
      <field name="speed"      type="uint16" unit="cm/s" alt_unit="m/s">norm of 2d ground speed in cm/s</field>
      <field name="climb"      type="int16"  unit="cm/s" alt_unit="m/s"/>
+     <field name="gps_phi"    type="float"  unit="rad" alt_unit="deg"/>
+     <field name="gps_theta"  type="float"  unit="rad" alt_unit="deg"/>
+     <field name="gps_psi"    type="float"  unit="rad" alt_unit="deg"/>
      <field name="week"       type="uint16" unit="weeks"/>
      <field name="itow"       type="uint32" unit="ms"/>
      <field name="utm_zone"   type="uint8"/>
@@ -1343,6 +1346,10 @@
     <field name="ecef_xd" type="int32" unit="cm/s" alt_unit="m/s"/>
     <field name="ecef_yd" type="int32" unit="cm/s" alt_unit="m/s"/>
     <field name="ecef_zd" type="int32" unit="cm/s" alt_unit="m/s"/>
+    <field name="qi"      type="int32">qi quaternion component *1e5</field>
+    <field name="qx"      type="int32">qi quaternion component *1e5</field>
+    <field name="qy"      type="int32">qi quaternion component *1e5</field>
+    <field name="qz"      type="int32">qi quaternion component *1e5</field>
     <field name="pacc"    type="uint32" unit="cm"   alt_unit="m"/>
     <field name="sacc"    type="uint32" unit="cm/s" alt_unit="m/s"/>
     <field name="tow"     type="uint32"/>
@@ -2474,6 +2481,15 @@
     <field name="ecef_zd" type="int32" unit="cm/s" alt_unit="m/s"/>
     <field name="tow"     type="uint32"/>
     <field name="course"  type="int32"  alt_unit="deg" alt_unit_coef="0.0000057296"/>
+  </message>
+
+  <message name="REMOTE_GPS_ATT" id="95" link="broadcasted">
+    <field name="ac_id"   type="uint8"/>
+    <field name="numsv"   type="uint8"/>
+    <field name="qi"      type="int32" unit="">qi quaternion component *1e5</field>
+    <field name="qx"      type="int32" unit="">qx quaternion component *1e5</field>
+    <field name="qy"      type="int32" unit="">qy quaternion component *1e5</field>
+    <field name="qz"      type="int32" unit="">qz quaternion component *1e5</field>
   </message>
 
   <message name="KITE_COMMAND" id="96">

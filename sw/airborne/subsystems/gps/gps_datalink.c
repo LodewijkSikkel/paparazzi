@@ -30,7 +30,7 @@
 #include "subsystems/gps.h"
 #include "subsystems/abi.h"
 
-// #include <stdio.h> 
+#include <stdio.h> 
 
 #if GPS_USE_DATALINK_SMALL
 #ifndef GPS_LOCAL_ECEF_ORIGIN_X
@@ -205,5 +205,34 @@ void parse_gps_datalink(uint8_t numsv, int32_t ecef_x, int32_t ecef_y, int32_t e
     gps.last_3dfix_time = sys_time.nb_sec;
   }
   AbiSendMsgGPS(GPS_DATALINK_ID, now_ts, &gps);
+
+}
+
+void parse_gps_att(uint8_t numsv __attribute__ ((unused)), int32_t qi, int32_t qx, int32_t qy, int32_t qz) 
+{
+  printf("This function is called #2!\n");
+
+  gps.quat_i.qi = qi;
+
+  printf("qi: %d\n", qi);
+
+  gps.quat_i.qx = qx;
+
+  printf("qx: %d\n", qx);
+
+  gps.quat_i.qy = qy;
+
+  printf("qy: %d\n", qy);
+
+  gps.quat_i.qz = qz;
+
+  printf("qz: %d\n", qz);
+
+  gps.quat_f.qi = qi / 1e5;
+  gps.quat_f.qx = qx / 1e5;
+  gps.quat_f.qy = qy / 1e5;
+  gps.quat_f.qz = qz / 1e5;
+
+  float_eulers_of_quat(&gps.eulers_f, &gps.quat_f);
 }
 
