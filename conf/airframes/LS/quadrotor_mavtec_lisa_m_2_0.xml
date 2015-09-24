@@ -37,13 +37,19 @@
       <define name="AHRS_GRAVITY_HEURISTIC_FACTOR" value="30"/>
     </subsystem>
     <subsystem name="ins"/>
+    <subsystem name="rpm_sensor"    type="ppm"/>
   </firmware>
 
   <firmware name="test_progs">
   </firmware>
 
   <modules>
-    <load name="dist_imu_mpu6050.xml"/>
+    <load name="dist_imu_mpu6050.xml">
+      <define name="DIST_IMU_NB_IMU" value="2"/>
+      <define name="DIST_IMU_FIR_BUFFER_SIZE" value="101"/>
+      <define name="IMU_MPU60X0_I2C_DEV" value="i2c2"/>
+    </load>
+    <load name="sys_mon.xml"/>
   </modules>
 
   <servos driver="Pwm">
@@ -134,10 +140,14 @@
     <define name="DDGAIN_R" value="300"/>
   </section>
 
- <section name="INS" prefix="INS_">
+  <section name="INS" prefix="INS_">
     <!-- Use GPS altitude measurments and set the R gain -->
     <!-- define name="USE_GPS_ALT" value="1"/ -->
     <!-- define name="VFF_R_GPS" value="0.01"/ -->
+  </section>
+
+  <section name="RPM_SENSOR" prefix="RPM_SENSOR_">
+    <define name="PRESCALAR" value="7"/>
   </section>
 
   <section name="STABILIZATION_ATTITUDE" prefix="STABILIZATION_ATTITUDE_">

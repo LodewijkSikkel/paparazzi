@@ -29,16 +29,33 @@
 
 #include "std.h"
 
-#include "peripherals/mpu60x0_i2c.h"
+// #include "peripherals/mpu60x0_i2c.h"
+#include "subsystems/imu.h"
+
+#ifndef DIST_IMU_NB_IMU // Number of IMUs
+#define DIST_IMU_NB_IMU 0
+#endif
+
+#ifndef DIST_IMU_FIR_BUFFER_SIZE // Size of the buffer window
+#define DIST_IMU_FIR_BUFFER_SIZE 0
+#endif
+
+struct CircBuf {
+  struct FloatVect3 buffer[DIST_IMU_FIR_BUFFER_SIZE]; // input-output buffer
+  uint32_t half_window_size; 
+  uint32_t head; // head
+  uint32_t tail; // tail
+  bool data_available;
+};
 
 struct DistImu {
-  struct Mpu60x0_I2c mpu[1];
-  struct Int32Rates gyro[1]; // gyroscope measurements in rad/s in BFP with #INT32_RATE_FRAC
-  struct Int32Vect3 accel[1]; // accelerometer measurements in m/s^2 in BFP with #INT32_ACCEL_FRAC
-  struct Int32Rates gyro_unscaled[1]; // unscaled gyroscope measurements
-  struct Int32Vect3 accel_unscaled[1]; // unscaled accelerometer measurements
-  struct Int32Rates gyro_neutral[1]; // gyroscope bias
-  struct Int32Vect3 accel_neutral[1]; // accelerometer bias
+  // struct Mpu60x0_I2c mpu[DIST_IMU_NB_IMU];
+  struct Imu imu[DIST_IMU_NB_IMU];
+  struct CircBuf circ_buf[DIST_IMU_NB_IMU]; // circular input-output buffers
+  struct FloatVect3 accel; // linear acceleration components
+  struct FloatRates rates_sqr; // angular rates squared
+  struct FloatRates	rates_dot; // angular acceleration
+  struct FloatRates rates_cross; // angular rate cross components
 };
 
 extern struct DistImu dist_imu;

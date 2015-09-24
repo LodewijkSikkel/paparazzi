@@ -196,7 +196,15 @@
     <field name="YprU3" 	type="float" 	unit="deg"/>
   </message>
 
-  <!--24 is free -->
+  <!-- ID 24 is free -->
+  <message name="DIST_IMU_ACCEL_SCALED" id="24">
+    <field name="ax_1"    type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+    <field name="ay_1"    type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+    <field name="az_1"    type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+    <field name="ax_2"    type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+    <field name="ay_2"    type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+    <field name="az_2"    type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+  </message>
 
   <message name="SVINFO" id="25">
     <field name="chn" type="uint8"/>
@@ -853,13 +861,28 @@
     <field name="values" type="int16[]" unit="none"/>
   </message>
 
-  <!--106 is free -->
+  <!--Replaced -->
   <message name="MOTOR_FREQ" id="106">
     <field name="freq" type="float[]" unit="Hz"/>
   </message>
 
-  <!--107 is free -->
-  <!--108 is free -->
+  <!--Replaced -->
+  <message name="DIST_IMU_ACCEL" id="107">
+    <field name="ax" type="float" unit="m/s2"/>
+    <field name="ay" type="float" unit="m/s2"/>
+    <field name="az" type="float" unit="m/s2"/>
+  </message>
+
+  <!--Replaced -->
+  <message name="DIST_IMU_RATES" id="108">
+    <field name="gp_sqr" type="float" unit="rad/s"/>
+    <field name="gq_sqr" type="float" unit="rad/s"/>
+    <field name="gr_sqr" type="float" unit="rad/s"/>
+    <field name="gp_dot" type="float" unit="rad/s2"/>
+    <field name="gq_dot" type="float" unit="rad/s2"/>
+    <field name="gr_dot" type="float" unit="rad/s2"/>
+  </message>
+
   <!--109 is free -->
 
   <message name="DC_SHOT" id="110">
@@ -1268,7 +1291,7 @@
     <field name="carrot_east"   type="int32" alt_unit="m" alt_unit_coef="0.0039063"/>
     <field name="carrot_north"  type="int32" alt_unit="m" alt_unit_coef="0.0039063"/>
     <field name="carrot_up"     type="int32" alt_unit="m" alt_unit_coef="0.0039063"/>
-    <field name="carrot_psi"    type="int32" alt_unit="deg" alt_unit_coef="0.0139882"/>
+    <field name="carrot_psi"    type="int32" alt_unit="deg" alt_unit_coef="0.0000546"/>
     <field name="thrust"        type="int32"/>
     <field name="flight_time"   type="uint16" unit="s"/>
   </message>
@@ -1352,7 +1375,7 @@
     <field name="tow"     type="uint32"/>
     <field name="pdop"    type="uint16"/>
     <field name="numsv"   type="uint8"/>
-    <field name="fix"     type="uint8" values="NONE|NA|2D|3D|DGPS|RTK"/>
+    <field name="fix"     type="uint8" values="NONE|UKN1|UKN2|3D"/>
   </message>
 
   <message name="AHRS_EULER_INT" id="156">
@@ -1974,12 +1997,11 @@
     <field name="vel_x"       type="float" unit="cm/s"/>
     <field name="vel_y"       type="float" unit="cm/s"/>
     <field name="div_size"    type="float" unit="1/s"/>
-    <field name="surface_roughness"    type="float" unit="1/s"/>
-    <field name="divergence"    type="float" unit="1/s"/>
+    <field name="cmd_phi"     type="int32" alt_unit="deg" alt_unit_coef="0.0139882"/>
+    <field name="cmd_theta"   type="int32" alt_unit="deg" alt_unit_coef="0.0139882"/>
   </message>
 
   <message name="STEREO_IMG" id="229">
-    <field name="frequency" type="uint8"/>
     <field name="data_size" type="uint8"/>
     <field name="imageBuffer" type="uint8[]"/>
   </message>
@@ -1991,8 +2013,8 @@
     <field name="motor_nb_err"  type="uint8"/>
     <field name="rc_status"    type="uint8" values="OK|LOST|REALLY_LOST"/>
     <field name="frame_rate"   type="uint8" unit="Hz"/>
-    <field name="gps_status"   type="uint8" values="NO_FIX|NA|2D|3D|DGPS|RTK"/>
-    <field name="ap_mode"      type="uint8" values="KILL|FAILSAFE|HOME|RATE_DIRECT|ATTITUDE_DIRECT|RATE_RC_CLIMB|ATTITUDE_RC_CLIMB|ATTITUDE_CLIMB|RATE_Z_HOLD|ATTITUDE_Z_HOLD|HOVER_DIRECT|HOVER_CLIMB|HOVER_Z_HOLD|NAV|RC_DIRECT|CARE_FREE|FORWARD|MODULE|FLIP"/>
+    <field name="gps_status"   type="uint8" values="NO_FIX|NA|NA|3Dfix"/>
+    <field name="ap_mode"      type="uint8" values="KILL|FAILSAFE|HOME|RATE_DIRECT|ATTITUDE_DIRECT|RATE_RC_CLIMB|ATTITUDE_RC_CLIMB|ATTITUDE_CLIMB|RATE_Z_HOLD|ATTITUDE_Z_HOLD|HOVER_DIRECT|HOVER_CLIMB|HOVER_Z_HOLD|NAV|RC_DIRECT|CARE_FREE|FORWARD|MODULE"/>
     <field name="ap_in_flight" type="uint8" values="ON_GROUND|IN_FLIGHT"/>
     <field name="ap_motors_on" type="uint8" values="MOTORS_OFF|MOTORS_ON"/>
     <field name="ap_h_mode"    type="uint8" values="KILL|RATE|ATTITUDE|HOVER|NAV|CF"/>
@@ -2536,12 +2558,6 @@
    <field name="pan" type="int8"/>
  </message>
 
- <message name="GPS_INJECT" id="153" link="forwarded">
-   <field name="ac_id" type="uint8"/>
-   <field name="packet_id" type="uint8"/>
-   <field name="data" type="uint8[]"/>
- </message>
-
 </msg_class>
 
 
@@ -2619,7 +2635,7 @@
     <field name="lat_mode" type="string" values="MANUAL|ROLL_RATE|ROLL|COURSE"/>
     <field name="horiz_mode" type="string" values="WAYPOINT|ROUTE|CIRCLE"/>
     <field name="gaz_mode" type="string" values="MANUAL|THROTTLE|CLIMB|ALT"/>
-    <field name="gps_mode" type="string" values="NOFIX|NA|2D|3D|DGPS|RTK"/>
+    <field name="gps_mode" type="string" values="NOFIX|DRO|2D|3D|GPSDRO"/>
     <field name="kill_mode" type="string" values="OFF|ON"/>
     <field name="flight_time" type="uint32" />
     <field name="state_filter_mode" type="string" values="UNKNOWN|INIT|ALIGN|OK|GPS_LOST|IMU_LOST|COV_ERR|IR_CONTRAST|ERROR"/>

@@ -13,8 +13,8 @@
   <event fun="dist_imu_event()"/>
   <makefile>
     <file name="dist_imu_mpu6050.c"/>
-    <file name="mpu60x0.c" dir="peripherals"/>
-    <file name="mpu60x0_i2c.c" dir="peripherals"/>
+    <!-- <file name="mpu60x0.c" dir="peripherals"/> -->
+    <!-- <file name="mpu60x0_i2c.c" dir="peripherals"/> -->
   </makefile>
 </module>
 

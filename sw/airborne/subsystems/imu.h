@@ -40,7 +40,9 @@ extern void imu_periodic(void);
 /** abstract IMU interface providing fixed point interface  */
 struct Imu {
   struct Int32Rates gyro;             ///< gyroscope measurements in rad/s in BFP with #INT32_RATE_FRAC
+  struct FloatRates gyro_f;           ///< gyroscope measurement in rad/s
   struct Int32Vect3 accel;            ///< accelerometer measurements in m/s^2 in BFP with #INT32_ACCEL_FRAC
+  struct FloatVect3 accel_f;          ///< accelerometer measurement in m/s^2
   struct Int32Vect3 mag;              ///< magnetometer measurements scaled to 1 in BFP with #INT32_MAG_FRAC
   struct Int32Rates gyro_prev;        ///< previous gyroscope measurements
   struct Int32Vect3 accel_prev;       ///< previous accelerometer measurements
