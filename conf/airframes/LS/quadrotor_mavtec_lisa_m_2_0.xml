@@ -17,6 +17,7 @@
         <!--define name="USE_KILL_SWITCH_FOR_MOTOR_ARMING" value="1"/-->
       </subsystem>
       <configure name="NO_LUFTBOOT" value="1"/>
+      <configure name="FLASH_MODE" value="SWD"/>
       <!-- MPU6000 is configured to output data at 2kHz, but polled at 512Hz PERIODIC_FREQUENCY -->
     </target>
 
@@ -46,8 +47,8 @@
   <modules>
     <load name="dist_imu_mpu6050.xml">
       <define name="DIST_IMU_NB_IMU" value="2"/>
-      <define name="DIST_IMU_FIR_BUFFER_SIZE" value="101"/>
-      <define name="IMU_MPU60X0_I2C_DEV" value="i2c2"/>
+      <define name="DIST_IMU_FIR_CUTOFF_FREQ" value="256."/>
+      <define name="DIST_IMU_FIR_HALF_WINDOW_SIZE" value="25"/> <!-- Should be an integer! -->
     </load>
     <load name="sys_mon.xml"/>
   </modules>

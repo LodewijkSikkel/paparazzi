@@ -131,65 +131,65 @@ void mpu60x0_i2c_event(struct Mpu60x0_I2c *mpu)
 }
 
 /** @todo: only one slave so far. */
-bool_t mpu60x0_configure_i2c_slaves(Mpu60x0ConfigSet mpu_set, void *mpu)
-{
-  struct Mpu60x0_I2c *mpu_i2c = (struct Mpu60x0_I2c *)(mpu);
+// bool_t mpu60x0_configure_i2c_slaves(Mpu60x0ConfigSet mpu_set, void *mpu)
+// {
+//   struct Mpu60x0_I2c *mpu_i2c = (struct Mpu60x0_I2c *)(mpu);
 
-  if (mpu_i2c->slave_init_status == MPU60X0_I2C_CONF_UNINIT) {
-    mpu_i2c->slave_init_status++;
-  }
+//   if (mpu_i2c->slave_init_status == MPU60X0_I2C_CONF_UNINIT) {
+//     mpu_i2c->slave_init_status++;
+//   }
 
-  switch (mpu_i2c->slave_init_status) {
-    case MPU60X0_I2C_CONF_I2C_MST_DIS:
-      mpu_set(mpu, MPU60X0_REG_USER_CTRL, 0);
-      mpu_i2c->slave_init_status++;
-      break;
-    case MPU60X0_I2C_CONF_I2C_BYPASS_EN:
-      /* switch to I2C passthrough */
-      mpu_set(mpu, MPU60X0_REG_INT_PIN_CFG, (1 << 1));
-      mpu_i2c->slave_init_status++;
-      break;
-    case MPU60X0_I2C_CONF_SLAVES_CONFIGURE:
-      /* configure each slave. TODO: currently only one */
-      if (mpu_i2c->config.slaves[0].configure(mpu_set, mpu)) {
-        mpu_i2c->slave_init_status++;
-      }
-      break;
-    case MPU60X0_I2C_CONF_I2C_BYPASS_DIS:
-      if (mpu_i2c->config.i2c_bypass) {
-        /* if bypassing I2C skip MPU I2C master setup */
-        mpu_i2c->slave_init_status = MPU60X0_I2C_CONF_DONE;
-      } else {
-        /* disable I2C passthrough again */
-        mpu_set(mpu, MPU60X0_REG_INT_PIN_CFG, (0 << 1));
-        mpu_i2c->slave_init_status++;
-      }
-      break;
-    case MPU60X0_I2C_CONF_I2C_MST_CLK:
-      /* configure MPU I2C master clock and stop/start between slave reads */
-      mpu_set(mpu, MPU60X0_REG_I2C_MST_CTRL,
-              ((1 << 4) | mpu_i2c->config.i2c_mst_clk));
-      mpu_i2c->slave_init_status++;
-      break;
-    case MPU60X0_I2C_CONF_I2C_MST_DELAY:
-      /* Set I2C slaves delayed sample rate */
-      mpu_set(mpu, MPU60X0_REG_I2C_MST_DELAY, mpu_i2c->config.i2c_mst_delay);
-      mpu_i2c->slave_init_status++;
-      break;
-    case MPU60X0_I2C_CONF_I2C_SMPLRT:
-      /* I2C slave0 sample rate/2 = 100/2 = 50Hz */
-      mpu_set(mpu, MPU60X0_REG_I2C_SLV4_CTRL, 0);
-      mpu_i2c->slave_init_status++;
-      break;
-    case MPU60X0_I2C_CONF_I2C_MST_EN:
-      /* enable internal I2C master */
-      mpu_set(mpu, MPU60X0_REG_USER_CTRL, (1 << MPU60X0_I2C_MST_EN));
-      mpu_i2c->slave_init_status++;
-      break;
-    case MPU60X0_I2C_CONF_DONE:
-      return TRUE;
-    default:
-      break;
-  }
-  return FALSE;
-}
+//   switch (mpu_i2c->slave_init_status) {
+//     case MPU60X0_I2C_CONF_I2C_MST_DIS:
+//       mpu_set(mpu, MPU60X0_REG_USER_CTRL, 0);
+//       mpu_i2c->slave_init_status++;
+//       break;
+//     case MPU60X0_I2C_CONF_I2C_BYPASS_EN:
+//       /* switch to I2C passthrough */
+//       mpu_set(mpu, MPU60X0_REG_INT_PIN_CFG, (1 << 1));
+//       mpu_i2c->slave_init_status++;
+//       break;
+//     case MPU60X0_I2C_CONF_SLAVES_CONFIGURE:
+//       /* configure each slave. TODO: currently only one */
+//       if (mpu_i2c->config.slaves[0].configure(mpu_set, mpu)) {
+//         mpu_i2c->slave_init_status++;
+//       }
+//       break;
+//     case MPU60X0_I2C_CONF_I2C_BYPASS_DIS:
+//       if (mpu_i2c->config.i2c_bypass) {
+//         /* if bypassing I2C skip MPU I2C master setup */
+//         mpu_i2c->slave_init_status = MPU60X0_I2C_CONF_DONE;
+//       } else {
+//         /* disable I2C passthrough again */
+//         mpu_set(mpu, MPU60X0_REG_INT_PIN_CFG, (0 << 1));
+//         mpu_i2c->slave_init_status++;
+//       }
+//       break;
+//     case MPU60X0_I2C_CONF_I2C_MST_CLK:
+//       /* configure MPU I2C master clock and stop/start between slave reads */
+//       mpu_set(mpu, MPU60X0_REG_I2C_MST_CTRL,
+//               ((1 << 4) | mpu_i2c->config.i2c_mst_clk));
+//       mpu_i2c->slave_init_status++;
+//       break;
+//     case MPU60X0_I2C_CONF_I2C_MST_DELAY:
+//       /* Set I2C slaves delayed sample rate */
+//       mpu_set(mpu, MPU60X0_REG_I2C_MST_DELAY, mpu_i2c->config.i2c_mst_delay);
+//       mpu_i2c->slave_init_status++;
+//       break;
+//     case MPU60X0_I2C_CONF_I2C_SMPLRT:
+//       /* I2C slave0 sample rate/2 = 100/2 = 50Hz */
+//       mpu_set(mpu, MPU60X0_REG_I2C_SLV4_CTRL, 0);
+//       mpu_i2c->slave_init_status++;
+//       break;
+//     case MPU60X0_I2C_CONF_I2C_MST_EN:
+//       /* enable internal I2C master */
+//       mpu_set(mpu, MPU60X0_REG_USER_CTRL, (1 << MPU60X0_I2C_MST_EN));
+//       mpu_i2c->slave_init_status++;
+//       break;
+//     case MPU60X0_I2C_CONF_DONE:
+//       return TRUE;
+//     default:
+//       break;
+//   }
+//   return FALSE;
+// }

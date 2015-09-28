@@ -13,8 +13,18 @@
   <event fun="dist_imu_event()"/>
   <makefile>
     <file name="dist_imu_mpu6050.c"/>
-    <!-- <file name="mpu60x0.c" dir="peripherals"/> -->
-    <!-- <file name="mpu60x0_i2c.c" dir="peripherals"/> -->
+    <file name="mpu60x0.c" dir="peripherals"/>
+    <file name="mpu60x0_i2c.c" dir="peripherals"/>
+    <raw>
+      IMU_MPU60X0_I2C_DEV ?= i2c2
+
+      # convert i2cx to upper/lower case
+      IMU_MPU60X0_I2C_DEV_UPPER=$(shell echo $(IMU_MPU60X0_I2C_DEV) | tr a-z A-Z)
+      IMU_MPU60X0_I2C_DEV_LOWER=$(shell echo $(IMU_MPU60X0_I2C_DEV) | tr A-Z a-z)
+
+      ap.CFLAGS += -DIMU_MPU60X0_I2C_DEV=$(IMU_MPU60X0_I2C_DEV_LOWER)
+      ap.CFLAGS += -DUSE_$(IMU_MPU60X0_I2C_DEV_UPPER)
+    </raw>
   </makefile>
 </module>
 

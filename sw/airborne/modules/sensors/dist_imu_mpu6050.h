@@ -29,29 +29,33 @@
 
 #include "std.h"
 
-// #include "peripherals/mpu60x0_i2c.h"
+#include "peripherals/mpu60x0_i2c.h"
 #include "subsystems/imu.h"
 
 #ifndef DIST_IMU_NB_IMU // Number of IMUs
 #define DIST_IMU_NB_IMU 0
 #endif
 
-#ifndef DIST_IMU_FIR_BUFFER_SIZE // Size of the buffer window
-#define DIST_IMU_FIR_BUFFER_SIZE 0
+#ifndef DIST_IMU_FIR_CUTOFF_FREQ // Cut-off frequency
+#define DIST_IMU_FIR_CUTOFF_FREQ 256
+#endif
+
+#ifndef DIST_IMU_FIR_HALF_WINDOW_SIZE // One-sided buffer window
+#define DIST_IMU_FIR_HALF_WINDOW_SIZE 1
 #endif
 
 struct CircBuf {
-  struct FloatVect3 buffer[DIST_IMU_FIR_BUFFER_SIZE]; // input-output buffer
-  uint32_t half_window_size; 
-  uint32_t head; // head
-  uint32_t tail; // tail
+  struct FloatVect3 buffer[(2 * DIST_IMU_FIR_HALF_WINDOW_SIZE) + 1]; // input-output buffer
+  size_t size; 
+  uint32_t head;
   bool data_available;
 };
 
 struct DistImu {
-  // struct Mpu60x0_I2c mpu[DIST_IMU_NB_IMU];
+  struct Mpu60x0_I2c mpu[DIST_IMU_NB_IMU];
   struct Imu imu[DIST_IMU_NB_IMU];
   struct CircBuf circ_buf[DIST_IMU_NB_IMU]; // circular input-output buffers
+  float fir_lp_coef[(2 * DIST_IMU_FIR_HALF_WINDOW_SIZE)+1]; // FIR low-pass filter coefficients
   struct FloatVect3 accel; // linear acceleration components
   struct FloatRates rates_sqr; // angular rates squared
   struct FloatRates	rates_dot; // angular acceleration
