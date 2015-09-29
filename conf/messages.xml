@@ -854,8 +854,29 @@
   </message>
 
   <!--106 is free -->
+  <message name="IMU_ARRAY_ACCEL_SCALED" id="106">
+    <field name="gx" type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+    <field name="gy" type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+    <field name="gz" type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+  </message>
+
   <!--107 is free -->
+  <message name="IMU_ARRAY_ACCEL" id="107">
+    <field name="gx" type="float" unit="m/s2"/>
+    <field name="gy" type="float" unit="m/s2"/>
+    <field name="gz" type="float" unit="m/s2"/>
+  </message>
+
   <!--108 is free -->
+  <message name="IMU_ARRAY_RATES" id="108">
+    <field name="gp2" type="float" unit="rad/s"/>
+    <field name="gq2" type="float" unit="rad/s"/>
+    <field name="gr2" type="float" unit="rad/s"/>
+    <field name="gp_dot" type="float" unit="rad/s"/>
+    <field name="gq_dot" type="float" unit="rad/s"/>
+    <field name="gr_dot" type="float" unit="rad/s"/>
+  </message>
+
   <!--109 is free -->
 
   <message name="DC_SHOT" id="110">
