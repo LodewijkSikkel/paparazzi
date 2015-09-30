@@ -38,7 +38,7 @@
 
 /* green, shared with ADC12 (ADC_6 on connector ANALOG2) */
 #ifndef USE_LED_3
-#define USE_LED_3 1
+#define USE_LED_3 0 // Switched off led 3
 #endif
 #define LED_3_GPIO GPIOC
 #define LED_3_GPIO_PIN GPIO2
@@ -52,7 +52,7 @@
 
 /* red, shared with ADC15 (ADC_4 on connector ANALOG2) */
 #ifndef USE_LED_4
-#define USE_LED_4 1
+#define USE_LED_4 0 // Switched off led 4
 #endif
 #define LED_4_GPIO GPIOC
 #define LED_4_GPIO_PIN GPIO5

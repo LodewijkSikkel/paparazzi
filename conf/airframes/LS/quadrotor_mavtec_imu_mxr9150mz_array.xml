@@ -46,9 +46,9 @@
   <modules>
     <load name="imu_mxr9150mz_array.xml">
       <define name="ADC_CHANNEL_ACCEL_NB_SAMPLES" value="16"/>
-      <configure name="ACCEL_1_CHANNEL_X" value="ADC_1"/>
-      <configure name="ACCEL_1_CHANNEL_Y" value="ADC_2"/>
-      <configure name="ACCEL_1_CHANNEL_Z" value="ADC_3"/>
+      <configure name="ACCEL_1_CHANNEL_X" value="ADC_3"/>
+      <configure name="ACCEL_1_CHANNEL_Y" value="ADC_4"/>
+      <configure name="ACCEL_1_CHANNEL_Z" value="ADC_6"/>
       <define name="ACCEL_1_BODY_TO_IMU_PHI" value="0."/>
       <define name="ACCEL_1_BODY_TO_IMU_THETA" value="0."/>
       <define name="ACCEL_1_BODY_TO_IMU_PSI" value="M_PI/2."/>
