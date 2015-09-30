@@ -42,14 +42,11 @@ void mxr9150mz_init(struct Mxr9150mz *mxr, uint8_t adc_channel_x, uint8_t adc_ch
 
   mxr->initialized = FALSE;
 
-  if (adc_channel_x != 0)
-    adc_buf_channel(adc_channel_x, &mxr_adc_buf[0], ADC_CHANNEL_ACCEL_NB_SAMPLES);
+  adc_buf_channel(adc_channel_x, &mxr_adc_buf[0], ADC_CHANNEL_ACCEL_NB_SAMPLES);
+
+  adc_buf_channel(adc_channel_y, &mxr_adc_buf[1], ADC_CHANNEL_ACCEL_NB_SAMPLES);
   
-  if (adc_channel_y != 0)
-    adc_buf_channel(adc_channel_y, &mxr_adc_buf[1], ADC_CHANNEL_ACCEL_NB_SAMPLES);
-  
-  if (adc_channel_z != 0)
-    adc_buf_channel(adc_channel_z, &mxr_adc_buf[2], ADC_CHANNEL_ACCEL_NB_SAMPLES);
+  adc_buf_channel(adc_channel_z, &mxr_adc_buf[2], ADC_CHANNEL_ACCEL_NB_SAMPLES);
 }
 
 // Configuration function called once before normal use

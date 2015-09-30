@@ -34,18 +34,19 @@
 #include "math/pprz_algebra_float.h"
 #include "math/pprz_algebra_int.h"
 #include "math/pprz_orientation_conversion.h"
+#include "mcu_periph/adc.h"
 #include "messages.h"
 #include "subsystems/datalink/downlink.h"
 
-#if define ACCEL_1_CHANNEL_X & defined ACCEL_1_CHANNEL_Y & defined ACCEL_1_CHANNEL_X
+#if defined ACCEL_1_CHANNEL_X & defined ACCEL_1_CHANNEL_Y & defined ACCEL_1_CHANNEL_Z
 #define USE_ACCEL_1 1
 #endif
 
-#if define ACCEL_2_CHANNEL_X & defined ACCEL_2_CHANNEL_Y & defined ACCEL_2_CHANNEL_X
+#if defined ACCEL_2_CHANNEL_X & defined ACCEL_2_CHANNEL_Y & defined ACCEL_2_CHANNEL_Z
 #define USE_ACCEL_2 1
 #endif
 
-#if define ACCEL_3_CHANNEL_X & defined ACCEL_3_CHANNEL_Y & defined ACCEL_3_CHANNEL_X
+#if defined ACCEL_3_CHANNEL_X & defined ACCEL_3_CHANNEL_Y & defined ACCEL_3_CHANNEL_Z
 #define USE_ACCEL_3 1
 #endif
 
@@ -55,19 +56,17 @@
 #define IMU_ACCEL_Z_SIGN  1
 #endif
  
-struct DistImu imu_mxr_array;
+struct ImuMxr9150mzArray imu_mxr_array;
 
 #if PERIODIC_TELEMETRY
 #include "subsystems/datalink/telemetry.h"
 
-struct ImuMxr9150mzArray imu_mxr_array;
-
 static void send_accel_scaled(struct transport_tx *trans, struct link_device *dev)
 {
   pprz_msg_send_IMU_ARRAY_ACCEL_SCALED(trans, dev, AC_ID,
-                                       &imu_mxr_array.imu[0].accel.x,
-                                       &imu_mxr_array.imu[0].accel.y,
-                                       &imu_mxr_array.imu[0].accel.z,
+                                       &imu_mxr_array.mxr[0].data_accel.vect.x,
+                                       &imu_mxr_array.mxr[0].data_accel.vect.y,
+                                       &imu_mxr_array.mxr[0].data_accel.vect.z,
                                        &imu_mxr_array.imu[1].accel.x,
                                        &imu_mxr_array.imu[1].accel.y,
                                        &imu_mxr_array.imu[1].accel.z,
@@ -103,9 +102,11 @@ void imu_mxr_array_init(void)
 struct FloatEulers orientation_eulers;
 
 #if USE_ACCEL_1
-  mxr9150mz_init(&mxr[0], ACCEL_1_CHANNEL_X, ACCEL_1_CHANNEL_Y, ACCEL_1_CHANNEL_Z);
+  mxr9150mz_init(&imu_mxr_array.mxr[0], ACCEL_1_CHANNEL_X, ACCEL_1_CHANNEL_Y, ACCEL_1_CHANNEL_Z);
 
-  orientation_eulers = {ACCEL_1_BODY_TO_IMU_X, ACCEL_1_BODY_TO_IMU_Y, ACCEL_1_BODY_TO_IMU_Z};
+  orientation_eulers.phi = ACCEL_1_BODY_TO_IMU_PHI; 
+  orientation_eulers.theta = ACCEL_1_BODY_TO_IMU_THETA; 
+  orientation_eulers.psi = ACCEL_1_BODY_TO_IMU_PSI;
   
   orientationSetEulers_f(&imu_mxr_array.imu[0].body_to_imu, &orientation_eulers);
   
@@ -115,9 +116,11 @@ struct FloatEulers orientation_eulers;
 #endif
 
 #if USE_ACCEL_2
-  mxr9150mz_init(&mxr[1], ACCEL_2_CHANNEL_X, ACCEL_2_CHANNEL_Y, ACCEL_2_CHANNEL_Z);
+  mxr9150mz_init(&imu_mxr_array.mxr[1], ACCEL_2_CHANNEL_X, ACCEL_2_CHANNEL_Y, ACCEL_2_CHANNEL_Z);
 
-  orientation_eulers = {ACCEL_2_BODY_TO_IMU_X, ACCEL_2_BODY_TO_IMU_Y, ACCEL_2_BODY_TO_IMU_Z};
+  orientation_eulers.phi = ACCEL_2_BODY_TO_IMU_PHI; 
+  orientation_eulers.theta = ACCEL_2_BODY_TO_IMU_THETA; 
+  orientation_eulers.psi = ACCEL_2_BODY_TO_IMU_PSI;
   
   orientationSetEulers_f(&imu_mxr_array.imu[1].body_to_imu, &orientation_eulers);
   
@@ -127,9 +130,11 @@ struct FloatEulers orientation_eulers;
 #endif 
 
 #if USE_ACCEL_3
-  mxr9150mz_init(&mxr[2], ACCEL_3_CHANNEL_X, ACCEL_3_CHANNEL_Y, ACCEL_3_CHANNEL_Z);
+  mxr9150mz_init(&imu_mxr_array.mxr[2], ACCEL_3_CHANNEL_X, ACCEL_3_CHANNEL_Y, ACCEL_3_CHANNEL_Z);
 
-  orientation_eulers = {ACCEL_3_BODY_TO_IMU_X, ACCEL_3_BODY_TO_IMU_Y, ACCEL_3_BODY_TO_IMU_Z};
+  orientation_eulers.phi = ACCEL_3_BODY_TO_IMU_PHI; 
+  orientation_eulers.theta = ACCEL_3_BODY_TO_IMU_THETA; 
+  orientation_eulers.psi = ACCEL_3_BODY_TO_IMU_PSI;
   
   orientationSetEulers_f(&imu_mxr_array.imu[2].body_to_imu, &orientation_eulers);
   
@@ -139,9 +144,9 @@ struct FloatEulers orientation_eulers;
 #endif
 
 #if PERIODIC_TELEMETRY
-  register_periodic_telemetry(DefaultPeriodic, "DIST_IMU_ACCEL_SCALED", send_accel_scaled);
-  register_periodic_telemetry(DefaultPeriodic, "DIST_IMU_ACCEL", send_accel);
-  register_periodic_telemetry(DefaultPeriodic, "DIST_IMU_RATES", send_rates);
+  register_periodic_telemetry(DefaultPeriodic, "IMU_ARRAY_ACCEL_SCALED", send_accel_scaled);
+  // register_periodic_telemetry(DefaultPeriodic, "IMU_ARRAY_ACCEL", send_accel);
+  // register_periodic_telemetry(DefaultPeriodic, "IMU_ARRAY_RATES", send_rates);
 #endif // DOWNLINK
 
 }
@@ -165,9 +170,9 @@ void imu_mxr_array_event(void)
       imu_scale_accel(&imu_mxr_array.imu[i]);
 
       // Rotate the local accelerometer frame to the body reference frame
-      struct Int32Vect3 accel;
-      int32_rmat_transp_vmult(&accel, &imu_mxr_array.imu[i].body_to_imu.rmat_i, &imu_mxr_array.imu[i].accel);
-      ACCELS_FLOAT_OF_BFP(dist_imu.imu[i].accel_f, accel);
+      // struct Int32Vect3 accel;
+      // int32_rmat_transp_vmult(&accel, &imu_mxr_array.imu[i].body_to_imu.rmat_i, &imu_mxr_array.imu[i].accel);
+      // ACCELS_FLOAT_OF_BFP(imu_mxr_array.imu[i].accel_f, accel);
     }
   }
 

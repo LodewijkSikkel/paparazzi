@@ -17,6 +17,7 @@
         <!--define name="USE_KILL_SWITCH_FOR_MOTOR_ARMING" value="1"/-->
       </subsystem>
       <configure name="NO_LUFTBOOT" value="1"/>
+      <configure name="FLASH_MODE" value="SWD"/>
       <!-- MPU6000 is configured to output data at 2kHz, but polled at 512Hz PERIODIC_FREQUENCY -->
     </target>
 
@@ -29,7 +30,7 @@
     <subsystem name="actuators"     type="pwm">
       <define name="SERVO_HZ" value="400"/>
     </subsystem>
-    <subsystem name="telemetry"     type="xbee_api"/>
+    <subsystem name="telemetry"     type="transparent"/>
     <subsystem name="imu"           type="aspirin_v2.2"/>
     <subsystem name="gps"           type="ublox"/>
     <subsystem name="stabilization" type="int_quat"/>
@@ -44,9 +45,14 @@
 
   <modules>
     <load name="imu_mxr9150mz_array.xml">
-      <define name="ACCEL_1_CHANNEL_X" value=""/>
-      <define name="ACCEL_1_CHANNEL_Y" value=""/>
-      <define name="ACCEL_1_CHANNEL_Z" value=""/>
+      <define name="ADC_CHANNEL_ACCEL_NB_SAMPLES" value="16"/>
+      <configure name="ACCEL_1_CHANNEL_X" value="ADC_1"/>
+      <configure name="ACCEL_1_CHANNEL_Y" value="ADC_2"/>
+      <configure name="ACCEL_1_CHANNEL_Z" value="ADC_3"/>
+      <define name="ACCEL_1_BODY_TO_IMU_PHI" value="0."/>
+      <define name="ACCEL_1_BODY_TO_IMU_THETA" value="0."/>
+      <define name="ACCEL_1_BODY_TO_IMU_PSI" value="M_PI/2."/>
+    </load>
   </modules>
 
   <servos driver="Pwm">
@@ -85,12 +91,12 @@
   </command_laws>
 
   <section name="IMU" prefix="IMU_">
-    <define name="ACCEL_X_NEUTRAL" value="-9"/>
-    <define name="ACCEL_Y_NEUTRAL" value="24"/>
-    <define name="ACCEL_Z_NEUTRAL" value="65"/>
-    <define name="ACCEL_X_SENS" value="4.90393762843" integer="16"/>
-    <define name="ACCEL_Y_SENS" value="4.919330721" integer="16"/>
-    <define name="ACCEL_Z_SENS" value="4.85197383186" integer="16"/>
+    <define name="ACCEL_X_NEUTRAL" value="2048"/>
+    <define name="ACCEL_Y_NEUTRAL" value="2048"/>
+    <define name="ACCEL_Z_NEUTRAL" value="2048"/>
+    <define name="ACCEL_X_SENS" value="50" integer="16"/>
+    <define name="ACCEL_Y_SENS" value="50" integer="16"/>
+    <define name="ACCEL_Z_SENS" value="50" integer="16"/>
 
     <!-- replace this with your own calibration -->
     <define name="MAG_X_NEUTRAL" value="-88"/>

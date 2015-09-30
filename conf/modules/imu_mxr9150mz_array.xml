@@ -10,10 +10,15 @@
   </header>
   <init fun="imu_mxr_array_init()"/>
   <periodic fun="imu_mxr_array_periodic()"/>
-  <event fun="imu_mpu9250_event()"/>
+  <event fun="imu_mxr_array_event()"/>
   <makefile>
     <file name="imu_mxr9150mz_array.c"/>
     <file name="mxr9150mz.c" dir="peripherals"/>
+    <raw>
+    ap.CFLAGS += -DACCEL_1_CHANNEL_X
+    ap.CFLAGS += -DACCEL_1_CHANNEL_Y -DUSE_$(ACCEL_1_CHANNEL_Y)
+    ap.CFLAGS += -DACCEL_1_CHANNEL_Z
+    </raw>
   </makefile>
 </module>
 

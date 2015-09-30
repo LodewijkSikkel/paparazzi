@@ -56,8 +56,9 @@
       <message name="DL_VALUE"               period="0.5"/>
       <message name="ALIVE"                  period="2.1"/>
       <message name="IMU_GYRO_SCALED"        period=".075"/>
-      <message name="IMU_ACCEL_SCALED"       period=".075"/>
+      <!--message name="IMU_ACCEL_SCALED"       period=".075"/-->
       <message name="IMU_MAG_SCALED"         period=".1"/>
+      <message name="IMU_ARRAY_ACCEL_SCALED" period=".075"/>
     </mode>
 
     <mode name="ahrs">

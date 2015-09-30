@@ -37,14 +37,14 @@ struct Mxr9150mz {
 	int overrun;
 	bool_t initialized;
 	union {
-    	struct Int16Vect3 vect; ///< accel data vector in accel coordinate system
+    	struct Int32Vect3 vect; ///< accel data vector in accel coordinate system
     	uint16_t values[3];     ///< accel data values accessible by channel index
   } data_accel;
   bool_t data_available;
 };
 
 // Functions
-extern void mxr9150mz_init(struct Mxr9150mz *mxr);
+extern void mxr9150mz_init(struct Mxr9150mz *mxr, uint8_t adc_channel_x, uint8_t adc_channel_y, uint8_t adc_channel_z);
 extern void mxr9150mz_start_configure(struct Mxr9150mz *mxr);
 extern void mxr9150mz_read(struct Mxr9150mz *mxr);
 extern void mxr9150mz_event(struct Mxr9150mz *mxr);

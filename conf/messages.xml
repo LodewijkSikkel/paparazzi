@@ -855,16 +855,22 @@
 
   <!--106 is free -->
   <message name="IMU_ARRAY_ACCEL_SCALED" id="106">
-    <field name="gx" type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
-    <field name="gy" type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
-    <field name="gz" type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+    <field name="a1x" type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+    <field name="a1y" type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+    <field name="a1z" type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+    <field name="a2x" type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+    <field name="a2y" type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+    <field name="a2z" type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+    <field name="a3x" type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+    <field name="a3y" type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
+    <field name="a3z" type="int32" alt_unit="m/s2" alt_unit_coef="0.0009766"/>
   </message>
 
   <!--107 is free -->
   <message name="IMU_ARRAY_ACCEL" id="107">
-    <field name="gx" type="float" unit="m/s2"/>
-    <field name="gy" type="float" unit="m/s2"/>
-    <field name="gz" type="float" unit="m/s2"/>
+    <field name="ax" type="float" unit="m/s2"/>
+    <field name="ay" type="float" unit="m/s2"/>
+    <field name="az" type="float" unit="m/s2"/>
   </message>
 
   <!--108 is free -->
