@@ -110,5 +110,11 @@ extern void sdcard_spi_multiwrite_start(struct SDCard *sdcard, uint32_t addr);
 extern void sdcard_spi_multiwrite_next(struct SDCard *sdcard);
 extern void sdcard_spi_multiwrite_stop(struct SDCard *sdcard);
 
-#endif // SDCARD_H_
+/* Private functions */
+extern void sdcard_spi_spicallback(struct spi_transaction *t);
+extern void sdcard_spi_send_cmd(struct SDCard *sdcard, uint8_t cmd, uint32_t arg);
+extern void sdcard_spi_send_app_cmd(struct SDCard *sdcard, uint8_t cmd, uint32_t arg);
+extern void sdcard_spi_request_bytes(struct SDCard *sdcard, uint8_t len);
 
+
+#endif // SDCARD_H_

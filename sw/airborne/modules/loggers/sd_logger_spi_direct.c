@@ -20,7 +20,7 @@
  *
  */
 
-/** @file modules/loggers/sd_logger_spi_direct.c
+/** @file modules/loggers/sd_logger.c
  *  @brief Module for real time logging using an SD Card in SPI mode.
  * This module buffers raw data from IMU and control inputs into a buffer of the SDCard peripheral.
  * Once the buffer is full, the entire data block is written to the card. No filesystem like FAT is used.

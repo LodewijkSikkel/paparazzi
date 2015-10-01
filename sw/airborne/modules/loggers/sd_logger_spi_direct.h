@@ -20,7 +20,7 @@
  *
  */
 
-/** @file modules/loggers/sd_logger_spi_direct.h
+/** @file modules/loggers/sd_logger.h
  *  @brief Module for real time logging using an SD Card in SPI mode.
  */
 
@@ -69,7 +69,7 @@ struct LogPacket {
   int32_t data_9;
   int32_t data_10;
   int32_t data_11;
-  int32_t data_12;
+  float data_12;
 };
 
 struct SdLogger {

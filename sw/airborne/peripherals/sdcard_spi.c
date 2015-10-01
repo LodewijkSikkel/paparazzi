@@ -31,10 +31,10 @@
  * MISO | DO      | Master In Slave Out |
  * SCK  | SCLK    | Clock Signal        |
  *
- * \image html airborne/sd-card-pinout.png SD Card pinout
+ * \image html airborne_modules/sd-card-pinout.png SD Card pinout
  * The following resource was used as implementation reference: http://elm-chan.org/docs/mmc/mmc_e.html
  * The initialization procedure is implemented according to the following diagram. Only the branches for SD ver.2 are currently included.
- * \image html airborne/sdinit.png
+ * \image html airborne_modules/sdinit.png
  * @todo CRC checksums are not implemented. Fake values of 0xFF are used and they are ignored by the card.
  */
 
@@ -50,14 +50,6 @@
  */
 struct SDCard sdcard1;
 
-/** @name Private Functions
- *  @{
- */
-void sdcard_spi_spicallback(struct spi_transaction *t);
-void sdcard_spi_send_cmd(struct SDCard *sdcard, uint8_t cmd, uint32_t arg);
-void sdcard_spi_send_app_cmd(struct SDCard *sdcard, uint8_t cmd, uint32_t arg);
-void sdcard_spi_request_bytes(struct SDCard *sdcard, uint8_t len);
-/** @}*/
 
 /**
  * @brief Configure initial values for SDCard.
@@ -140,7 +132,6 @@ void sdcard_spi_periodic(struct SDCard *sdcard)
   }
 
 }
-
 
 /**
  * @brief Callback function for SPI transactions.
@@ -657,4 +648,3 @@ void sdcard_spi_multiwrite_stop(struct SDCard *sdcard)
   spi_submit(sdcard->spi_p, &sdcard->spi_t);
   sdcard->status = SDCard_MultiWriteStopping;
 }
-
