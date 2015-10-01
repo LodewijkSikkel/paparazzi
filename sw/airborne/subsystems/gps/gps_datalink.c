@@ -210,8 +210,6 @@ void parse_gps_datalink(uint8_t numsv, int32_t ecef_x, int32_t ecef_y, int32_t e
 
 void parse_gps_att(uint8_t numsv __attribute__ ((unused)), int32_t qi, int32_t qx, int32_t qy, int32_t qz) 
 {
-  printf("This function is called #2!\n");
-
   gps.quat_i.qi = qi;
 
   printf("qi: %d\n", qi);

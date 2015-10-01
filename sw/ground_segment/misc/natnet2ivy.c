@@ -496,6 +496,17 @@ gboolean timeout_transmit_callback(gpointer data) {
     orient.qz = rigidBodies[i].qz;
     double_eulers_of_quat(&orient_eulers, &orient);
 
+    struct DoubleRMat rm;
+    double_rmat_of_quat(&rm, &orient);
+
+    printf("%f, %f, %f\n", RMAT_ELMT(rm, 0, 0), RMAT_ELMT(rm, 0, 1), RMAT_ELMT(rm, 0, 2));
+    printf("%f, %f, %f\n", RMAT_ELMT(rm, 1, 0), RMAT_ELMT(rm, 1, 1), RMAT_ELMT(rm, 1, 2));
+    printf("%f, %f, %f\n\n", RMAT_ELMT(rm, 2, 0), RMAT_ELMT(rm, 2, 1), RMAT_ELMT(rm, 2, 2));
+
+    printf("phi: %f\n", atan(RMAT_ELMT(rm, 2, 0)/RMAT_ELMT(rm, 2, 2))*180/M_PI);
+    printf("theta: %f\n", asin(RMAT_ELMT(rm, 2, 1))*180/M_PI);
+    printf("psi: %f\n\n", atan(-RMAT_ELMT(rm, 0, 1)/RMAT_ELMT(rm, 1, 1))*180/M_PI);
+
     // Calculate the heading by adding the Natnet offset angle and normalizing it
     double heading = -orient_eulers.psi+90.0/57.6 - tracking_offset_angle; //the optitrack axes are 90 degrees rotated wrt ENU
     NormRadAngle(heading);
