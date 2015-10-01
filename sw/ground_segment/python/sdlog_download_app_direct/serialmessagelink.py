@@ -29,6 +29,9 @@ class SerialMessage():
 
 class SerialMessageLink():
     def __init__(self, port, baud):
+
+        self.mutex = threading.Lock()
+
         self.data_types = { 'float' : ['f', 4],
                             'uint8' : ['B', 1],
                             'uint16' : ['H', 2],
@@ -87,7 +90,9 @@ class SerialMessageLink():
     def serialCallback(self):
         while self.alive.isSet():
             # Does not block because of serial timeout set in init:
+            self.mutex.acquire()
             indata = bytearray(self.serial.read(self.serial.inWaiting() or 1))
+            self.mutex.release()
             for b in indata:
                 self.parseByte(int(b))
 
@@ -160,13 +165,16 @@ class SerialMessageLink():
     def messageReceived(self):
         """Check if the message has a subscription"""
         if self.msg.msg_id in self.subscriptions and self.msg.valid is True:
+
+            print self.msg.msg_id
+
             a = self.subscriptions[self.msg.msg_id]
             callback = a[0]
             pprz_msg = a[1]
             fmt = a[2]
             
             """Unpack the data into convenient string"""
-            self.msg.payload_items = struct.unpack(fmt, self.msg.payload)
+            self.msg.payload_items = struct.unpack(fmt, str(self.msg.payload))
 
             """Call the callback function of subscription, pass message"""
             callback(self.msg)
@@ -212,4 +220,6 @@ class SerialMessageLink():
         """CRC_B"""
         buf.append(crc_b % 256)
 
-        self.serial.write(buf)
+        self.mutex.acquire()
+        print "Bytes written: %d"% self.serial.write(buf)
+        self.mutex.release()
