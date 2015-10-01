@@ -22,11 +22,11 @@
   <periodic fun="sd_logger_periodic()" autorun="TRUE"/>
   <datalink message="SETTING" fun="sd_logger_command()"/>
   <makefile target="ap">
-    <define name="SPI_MASTER" value="1" />
-    <define name="USE_SPI2" value="1" />
-    <define name="SD_LOGGER_SPI_LINK_DEVICE" value="spi2" />
-    <define name="USE_SPI_SLAVE3" value="1" />
-    <define name="SD_LOGGER_SPI_LINK_SLAVE_NUMBER" value="SPI_SLAVE3" />
+    <!-- <define name="SPI_MASTER" value="1" /> --> <!-- ENABLED AS THE IMU IS THROUGH SPI -->
+    <define name="USE_SPI1" value="1" />
+    <define name="SD_LOGGER_SPI_LINK_DEVICE" value="spi1" />
+    <define name="USE_SPI_SLAVE1" value="1" />
+    <define name="SD_LOGGER_SPI_LINK_SLAVE_NUMBER" value="SPI_SLAVE1" />
     <file name="sd_logger_spi_direct.c"/>
     <file name="sdcard_spi.c" dir="peripherals"/>
   </makefile>

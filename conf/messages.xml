@@ -197,6 +197,21 @@
   </message>
 
   <!--24 is free -->
+  <message name="LOG_DATAPACKET" id="24">
+    <field name="timestamp" type="uint32"/>
+    <field name="data_1" type="int32"/>
+    <field name="data_2" type="int32"/>
+    <field name="data_3" type="int32"/>
+    <field name="data_4" type="int32"/>
+    <field name="data_5" type="int32"/>
+    <field name="data_6" type="int32"/>
+    <field name="data_7" type="int32"/>
+    <field name="data_8" type="int32"/>
+    <field name="data_9" type="int32"/>
+    <field name="data_10" type="int32"/>
+    <field name="data_11" type="int32"/>
+    <field name="data_12" type="int32"/>
+  </message>
 
   <message name="SVINFO" id="25">
     <field name="chn" type="uint8"/>
