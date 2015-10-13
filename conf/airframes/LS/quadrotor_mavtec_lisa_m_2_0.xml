@@ -17,6 +17,7 @@
         <!--define name="USE_KILL_SWITCH_FOR_MOTOR_ARMING" value="1"/-->
       </subsystem>
       <configure name="NO_LUFTBOOT" value="1"/>
+      <configure name="FLASH_MODE" value="SWD"/>
       <!-- MPU6000 is configured to output data at 2kHz, but polled at 512Hz PERIODIC_FREQUENCY -->
     </target>
 
@@ -29,7 +30,7 @@
     <subsystem name="actuators"     type="pwm">
       <define name="SERVO_HZ" value="400"/>
     </subsystem>
-    <subsystem name="telemetry"     type="transparent"/>
+    <subsystem name="telemetry"     type="xbee_api"/>
     <subsystem name="imu"           type="aspirin_v2.2"/>
     <subsystem name="gps"           type="datalink"/>
     <subsystem name="stabilization" type="int_quat"/>
@@ -43,6 +44,7 @@
   </firmware>
 
   <modules>
+    <load name="logger_spi_link.xml"/>
   </modules>
 
   <servos driver="Pwm">
@@ -98,7 +100,7 @@
 
     <define name="BODY_TO_IMU_PHI"   value="0." unit="deg"/>
     <define name="BODY_TO_IMU_THETA" value="0." unit="deg"/>
-    <define name="BODY_TO_IMU_PSI"   value="270." unit="deg"/>
+    <define name="BODY_TO_IMU_PSI"   value="180." unit="deg"/>
   </section>
 
   <section name="AHRS" prefix="AHRS_">
@@ -137,6 +139,13 @@
     <!-- Use GPS altitude measurments and set the R gain -->
     <!-- define name="USE_GPS_ALT" value="1"/ -->
     <!-- define name="VFF_R_GPS" value="0.01"/ -->
+  </section>
+
+  <section name="GPS" prefix="GPS_">
+    <define name="USE_DATALINK_SMALL" value="1"/>
+    <define name="LOCAL_ECEF_ORIGIN_X" value="392433200"/>
+    <define name="LOCAL_ECEF_ORIGIN_Y" value="30036200"/>
+    <define name="LOCAL_ECEF_ORIGIN_Z" value="500219700"/>
   </section>
 
   <section name="STABILIZATION_ATTITUDE" prefix="STABILIZATION_ATTITUDE_">

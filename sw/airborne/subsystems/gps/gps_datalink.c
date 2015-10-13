@@ -208,29 +208,14 @@ void parse_gps_datalink(uint8_t numsv, int32_t ecef_x, int32_t ecef_y, int32_t e
 
 }
 
-void parse_gps_att(uint8_t numsv __attribute__ ((unused)), int32_t qi, int32_t qx, int32_t qy, int32_t qz) 
+void parse_gps_att(uint8_t numsv __attribute__ ((unused)), int32_t phi, int32_t theta, int32_t psi) 
 {
-  gps.quat_i.qi = qi;
+  gps.eulers_i.phi = phi;
+  gps.eulers_i.theta = theta;
+  gps.eulers_i.psi = psi;
 
-  printf("qi: %d\n", qi);
-
-  gps.quat_i.qx = qx;
-
-  printf("qx: %d\n", qx);
-
-  gps.quat_i.qy = qy;
-
-  printf("qy: %d\n", qy);
-
-  gps.quat_i.qz = qz;
-
-  printf("qz: %d\n", qz);
-
-  gps.quat_f.qi = qi / 1e5;
-  gps.quat_f.qx = qx / 1e5;
-  gps.quat_f.qy = qy / 1e5;
-  gps.quat_f.qz = qz / 1e5;
-
-  float_eulers_of_quat(&gps.eulers_f, &gps.quat_f);
+  gps.eulers_f.phi = ANGLE_FLOAT_OF_BFP(gps.eulers_i.phi);
+  gps.eulers_f.theta = ANGLE_FLOAT_OF_BFP(gps.eulers_i.theta);
+  gps.eulers_f.psi = ANGLE_FLOAT_OF_BFP(gps.eulers_i.psi);
 }
 

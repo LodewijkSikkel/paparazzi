@@ -75,9 +75,8 @@ struct GpsState {
   uint16_t speed_3d;             ///< norm of 3d speed in cm/s
   int32_t course;                ///< GPS course over ground in rad*1e7, [0, 2*Pi]*1e7 (CW/north)
 
-  struct Int32Quat quat_i;       ///< unscaled quaternion (*1e5)
-  struct FloatQuat quat_f;       ///< GPS attitude in quaternions
-  struct FloatEulers eulers_f;    ///< GPS attitude in Euler angles
+  struct Int32Eulers eulers_i;     ///< GPS attitude in Euler angles in ANGLE BFP
+  struct FloatEulers eulers_f;   ///< GPS attitude in Euler angles
 
   uint32_t pacc;                 ///< position accuracy in cm
   uint32_t sacc;                 ///< speed accuracy in cm/s

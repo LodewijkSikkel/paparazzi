@@ -1346,10 +1346,9 @@
     <field name="ecef_xd" type="int32" unit="cm/s" alt_unit="m/s"/>
     <field name="ecef_yd" type="int32" unit="cm/s" alt_unit="m/s"/>
     <field name="ecef_zd" type="int32" unit="cm/s" alt_unit="m/s"/>
-    <field name="qi"      type="int32">qi quaternion component *1e5</field>
-    <field name="qx"      type="int32">qi quaternion component *1e5</field>
-    <field name="qy"      type="int32">qi quaternion component *1e5</field>
-    <field name="qz"      type="int32">qi quaternion component *1e5</field>
+    <field name="phi"     type="int32">roll angle in BFP with #INT32_ANGLE_FRAC</field>
+    <field name="theta"   type="int32">pitch angle in BFP with #INT32_ANGLE_FRAC</field>
+    <field name="psi"     type="int32">yaw angle in BFP with #INT32_ANGLE_FRAC</field>
     <field name="pacc"    type="uint32" unit="cm"   alt_unit="m"/>
     <field name="sacc"    type="uint32" unit="cm/s" alt_unit="m/s"/>
     <field name="tow"     type="uint32"/>
@@ -2486,10 +2485,9 @@
   <message name="REMOTE_GPS_ATT" id="95" link="broadcasted">
     <field name="ac_id"   type="uint8"/>
     <field name="numsv"   type="uint8"/>
-    <field name="qi"      type="int32" unit="">qi quaternion component *1e5</field>
-    <field name="qx"      type="int32" unit="">qx quaternion component *1e5</field>
-    <field name="qy"      type="int32" unit="">qy quaternion component *1e5</field>
-    <field name="qz"      type="int32" unit="">qz quaternion component *1e5</field>
+    <field name="phi"     type="int32" unit="">roll angle in BFP with #INT32_ANGLE_FRAC</field>
+    <field name="theta"   type="int32" unit="">pitch angle in BFP with #INT32_ANGLE_FRAC</field>
+    <field name="psi"     type="int32" unit="">yaw angle in BFP with #INT32_ANGLE_FRAC</field>
   </message>
 
   <message name="KITE_COMMAND" id="96">

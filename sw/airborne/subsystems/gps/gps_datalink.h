@@ -44,7 +44,7 @@ extern void parse_gps_datalink(uint8_t numsv, int32_t ecef_x, int32_t ecef_y, in
                                int32_t ecef_xd, int32_t ecef_yd, int32_t ecef_zd,
                                uint32_t tow, int32_t course);
 
-extern void parse_gps_att(uint8_t numsv, int32_t qi, int32_t qx, int32_t qy, int32_t qz);
+extern void parse_gps_att(uint8_t numsv, int32_t phi, int32_t theta, int32_t psi);
 
 // dummy
 #define GpsEvent() {}

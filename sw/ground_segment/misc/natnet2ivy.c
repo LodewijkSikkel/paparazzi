@@ -43,6 +43,7 @@
 #include "arch/linux/udp_socket.h"
 #include "math/pprz_geodetic_double.h"
 #include "math/pprz_algebra_double.h"
+#include "math/pprz_algebra_int.h"
 
 /** Debugging options */
 uint8_t verbose = 0;
@@ -494,18 +495,22 @@ gboolean timeout_transmit_callback(gpointer data) {
     orient.qx = rigidBodies[i].qx;
     orient.qy = rigidBodies[i].qy;
     orient.qz = rigidBodies[i].qz;
-    double_eulers_of_quat(&orient_eulers, &orient);
+    // double_eulers_of_quat(&orient_eulers, &orient);
 
     struct DoubleRMat rm;
     double_rmat_of_quat(&rm, &orient);
 
-    printf("%f, %f, %f\n", RMAT_ELMT(rm, 0, 0), RMAT_ELMT(rm, 0, 1), RMAT_ELMT(rm, 0, 2));
-    printf("%f, %f, %f\n", RMAT_ELMT(rm, 1, 0), RMAT_ELMT(rm, 1, 1), RMAT_ELMT(rm, 1, 2));
-    printf("%f, %f, %f\n\n", RMAT_ELMT(rm, 2, 0), RMAT_ELMT(rm, 2, 1), RMAT_ELMT(rm, 2, 2));
+    // printf("%f, %f, %f\n", RMAT_ELMT(rm, 0, 0), RMAT_ELMT(rm, 0, 1), RMAT_ELMT(rm, 0, 2));
+    // printf("%f, %f, %f\n", RMAT_ELMT(rm, 1, 0), RMAT_ELMT(rm, 1, 1), RMAT_ELMT(rm, 1, 2));
+    // printf("%f, %f, %f\n\n", RMAT_ELMT(rm, 2, 0), RMAT_ELMT(rm, 2, 1), RMAT_ELMT(rm, 2, 2));
 
-    printf("phi: %f\n", atan(RMAT_ELMT(rm, 2, 0)/RMAT_ELMT(rm, 2, 2))*180/M_PI);
-    printf("theta: %f\n", asin(RMAT_ELMT(rm, 2, 1))*180/M_PI);
-    printf("psi: %f\n\n", atan(-RMAT_ELMT(rm, 0, 1)/RMAT_ELMT(rm, 1, 1))*180/M_PI);
+    // printf("phi: %f\n", atan(RMAT_ELMT(rm, 2, 0)/RMAT_ELMT(rm, 2, 2))*180/M_PI);
+    // printf("theta: %f\n", asin(RMAT_ELMT(rm, 2, 1))*180/M_PI);
+    // printf("psi: %f\n\n", atan(-RMAT_ELMT(rm, 0, 1)/RMAT_ELMT(rm, 1, 1))*180/M_PI);
+
+    orient_eulers.phi = atan(RMAT_ELMT(rm, 2, 0)/RMAT_ELMT(rm, 2, 2));
+    orient_eulers.theta = asin(RMAT_ELMT(rm, 2, 1));
+    orient_eulers.psi = atan(-RMAT_ELMT(rm, 0, 1)/RMAT_ELMT(rm, 1, 1));
 
     // Calculate the heading by adding the Natnet offset angle and normalizing it
     double heading = -orient_eulers.psi+90.0/57.6 - tracking_offset_angle; //the optitrack axes are 90 degrees rotated wrt ENU
@@ -563,12 +568,16 @@ gboolean timeout_transmit_callback(gpointer data) {
     }
 
     if (att) {
-      IvySendMsg("0 REMOTE_GPS_ATT %d %d %d %d %d %d", aircrafts[rigidBodies[i].id].ac_id, // uint8 rigid body ID (1 byte)
+      struct Int32Eulers orient_eulers_i;
+      orient_eulers_i.phi = ANGLE_BFP_OF_REAL(orient_eulers.phi);
+      orient_eulers_i.theta = ANGLE_BFP_OF_REAL(orient_eulers.theta);
+      orient_eulers_i.psi = ANGLE_BFP_OF_REAL(orient_eulers.psi);
+
+      IvySendMsg("0 REMOTE_GPS_ATT %d %d %d %d %d", aircrafts[rigidBodies[i].id].ac_id, // uint8 rigid body ID (1 byte)
         0,
-        (int)(orient.qi*1e5),                   // qi*1e5
-        (int)(orient.qx*1e5),                   // qx*1e5
-        (int)(orient.qy*1e5),                   // qy*1e5
-        (int)(orient.qz*1e5));                  // qz*1e5
+        orient_eulers_i.phi,   // roll angle in BFP with #INT32_ANGLE_FRAC
+        orient_eulers_i.theta, // pitch angle in BFP with #INT32_ANGLE_FRAC
+        orient_eulers_i.psi);  // yaw angle in BFP with #INT32_ANGLE_FRAC
     }
 
     // Reset the velocity differentiator if we calculated the velocity

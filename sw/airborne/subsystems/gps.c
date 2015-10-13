@@ -106,7 +106,7 @@ static void send_gps_int(struct transport_tx *trans, struct link_device *dev)
                         &gps.lla_pos.lat, &gps.lla_pos.lon, &gps.lla_pos.alt,
                         &gps.hmsl,
                         &gps.ecef_vel.x, &gps.ecef_vel.y, &gps.ecef_vel.z,
-                        &gps.quat_i.qi, &gps.quat_i.qx, &gps.quat_i.qy, &gps.quat_i.qz,
+                        &gps.eulers_i.phi, &gps.eulers_i.theta, &gps.eulers_i.psi,
                         &gps.pacc, &gps.sacc,
                         &gps.tow,
                         &gps.pdop,

@@ -178,10 +178,9 @@ void dl_parse_msg(void)
       // Parse the attitude data
       parse_gps_att(
         DL_REMOTE_GPS_ATT_numsv(dl_buffer),
-        DL_REMOTE_GPS_ATT_qi(dl_buffer),
-        DL_REMOTE_GPS_ATT_qx(dl_buffer),
-        DL_REMOTE_GPS_ATT_qy(dl_buffer),
-        DL_REMOTE_GPS_ATT_qz(dl_buffer));
+        DL_REMOTE_GPS_ATT_phi(dl_buffer),
+        DL_REMOTE_GPS_ATT_theta(dl_buffer),
+        DL_REMOTE_GPS_ATT_psi(dl_buffer));
       break;
 
 #endif
