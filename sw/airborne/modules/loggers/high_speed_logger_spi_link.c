@@ -62,18 +62,18 @@ void high_speed_logger_spi_link_periodic(void)
     high_speed_logger_spi_link_data.gyro_p     = imu.gyro_unscaled.p;
     high_speed_logger_spi_link_data.gyro_q     = imu.gyro_unscaled.q;
     high_speed_logger_spi_link_data.gyro_r     = imu.gyro_unscaled.r;
-    high_speed_logger_spi_link_data.acc_x      = imu.accel_unscaled.x;
-    high_speed_logger_spi_link_data.acc_y      = imu.accel_unscaled.y;
-    high_speed_logger_spi_link_data.acc_z      = imu.accel_unscaled.z;
-    high_speed_logger_spi_link_data.mag_x      = rpm_sensor.motor_frequency; // temporarily replaced
-    high_speed_logger_spi_link_data.mag_y      = imu.mag_unscaled.y;
-    high_speed_logger_spi_link_data.mag_z      = imu.mag_unscaled.z;
+    high_speed_logger_spi_link_data.acc_1_x    = dist_imu.imu[0].accel_unscaled.x;
+    high_speed_logger_spi_link_data.acc_1_y    = dist_imu.imu[0].accel_unscaled.y;
+    high_speed_logger_spi_link_data.acc_1_z    = dist_imu.imu[0].accel_unscaled.z;
+    high_speed_logger_spi_link_data.acc_2_x    = dist_imu.imu[1].accel_unscaled.x;
+    high_speed_logger_spi_link_data.acc_2_y    = dist_imu.imu[1].accel_unscaled.y;
+    high_speed_logger_spi_link_data.acc_2_z    = dist_imu.imu[1].accel_unscaled.z;
     high_speed_logger_spi_link_data.phi        = stateGetNedToBodyEulers_i()->phi;
     high_speed_logger_spi_link_data.theta      = stateGetNedToBodyEulers_i()->theta;
     high_speed_logger_spi_link_data.psi        = stateGetNedToBodyEulers_i()->psi;
-    high_speed_logger_spi_link_data.extra1     = dist_imu.accel_unscaled[0].x;
-    high_speed_logger_spi_link_data.extra2     = dist_imu.accel_unscaled[0].y;
-    high_speed_logger_spi_link_data.extra3     = dist_imu.accel_unscaled[0].z;
+    high_speed_logger_spi_link_data.extra1     = 0;
+    high_speed_logger_spi_link_data.extra2     = 0;
+    high_speed_logger_spi_link_data.extra3     = 0;
 
     spi_submit(&(HIGH_SPEED_LOGGER_SPI_LINK_DEVICE), &high_speed_logger_spi_link_transaction);
   }

@@ -14,7 +14,7 @@
       <subsystem name="radio_control" type="spektrum">
         <define name="RADIO_KILL_SWITCH" value="RADIO_GEAR"/>
         <define name="RADIO_MODE" value="RADIO_FLAP"/>
-        <!--define name="USE_KILL_SWITCH_FOR_MOTOR_ARMING" value="1"/-->
+        <define name="USE_KILL_SWITCH_FOR_MOTOR_ARMING" value="1"/>
       </subsystem>
       <configure name="NO_LUFTBOOT" value="1"/>
       <configure name="FLASH_MODE" value="SWD"/>
@@ -50,7 +50,7 @@
       <define name="DIST_IMU_FIR_CUTOFF_FREQ" value="256."/>
       <define name="DIST_IMU_FIR_HALF_WINDOW_SIZE" value="25"/> <!-- Should be an integer! -->
     </load>
-    <load name="sys_mon.xml"/>
+    <load name="logger_spi_link.xml"/>
   </modules>
 
   <servos driver="Pwm">
@@ -106,7 +106,7 @@
 
     <define name="BODY_TO_IMU_PHI"   value="0." unit="deg"/>
     <define name="BODY_TO_IMU_THETA" value="0." unit="deg"/>
-    <define name="BODY_TO_IMU_PSI"   value="270." unit="deg"/>
+    <define name="BODY_TO_IMU_PSI"   value="180." unit="deg"/>
   </section>
 
   <section name="AHRS" prefix="AHRS_">

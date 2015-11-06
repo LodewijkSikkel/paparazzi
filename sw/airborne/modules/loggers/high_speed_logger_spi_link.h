@@ -35,12 +35,12 @@ struct PACKED high_speed_logger_spi_link_data {
   int32_t gyro_p;     // 2
   int32_t gyro_q;
   int32_t gyro_r;
-  int32_t acc_x;      // 5
-  int32_t acc_y;
-  int32_t acc_z;
-  int32_t mag_x;      // 8
-  int32_t mag_y;
-  int32_t mag_z;
+  int32_t acc_1_x;      // 5
+  int32_t acc_1_y;
+  int32_t acc_1_z;
+  int32_t acc_2_x;      // 8
+  int32_t acc_2_y;
+  int32_t acc_2_z;
   int32_t phi;        // 11
   int32_t theta;
   int32_t psi;
