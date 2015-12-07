@@ -32,6 +32,7 @@
 #include "subsystems/imu.h"
 #include "firmwares/rotorcraft/stabilization.h"
 #include "state.h"
+#include "subsystems/gps/gps_datalink.h"
 
 /** Set the default File logger path to the USB drive */
 #ifndef FILE_LOGGER_PATH
@@ -84,25 +85,41 @@ void file_logger_periodic(void)
   static uint32_t counter;
   struct Int32Quat *quat = stateGetNedToBodyQuat_i();
 
-  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+  // fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+  //         counter,
+  //         imu.gyro_unscaled.p,
+  //         imu.gyro_unscaled.q,
+  //         imu.gyro_unscaled.r,
+  //         imu.accel_unscaled.x,
+  //         imu.accel_unscaled.y,
+  //         imu.accel_unscaled.z,
+  //         imu.mag_unscaled.x,
+  //         imu.mag_unscaled.y,
+  //         imu.mag_unscaled.z,
+  //         stabilization_cmd[COMMAND_THRUST],
+  //         stabilization_cmd[COMMAND_ROLL],
+  //         stabilization_cmd[COMMAND_PITCH],
+  //         stabilization_cmd[COMMAND_YAW],
+  //         quat->qi,
+  //         quat->qx,
+  //         quat->qy,
+  //         quat->qz
+  //        );
+    fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
           counter,
-          imu.gyro_unscaled.p,
-          imu.gyro_unscaled.q,
-          imu.gyro_unscaled.r,
+          gps_raw.pos_x,
+          gps_raw.pos_y,
+          gps_raw.pos_z,
+          gps_raw.vel_x,
+          gps_raw.vel_y,
+          gps_raw.vel_z,
+          gps_raw.qi,
+          gps_raw.qx,
+          gps_raw.qy,
+          gps_raw.qz,
           imu.accel_unscaled.x,
           imu.accel_unscaled.y,
-          imu.accel_unscaled.z,
-          imu.mag_unscaled.x,
-          imu.mag_unscaled.y,
-          imu.mag_unscaled.z,
-          stabilization_cmd[COMMAND_THRUST],
-          stabilization_cmd[COMMAND_ROLL],
-          stabilization_cmd[COMMAND_PITCH],
-          stabilization_cmd[COMMAND_YAW],
-          quat->qi,
-          quat->qx,
-          quat->qy,
-          quat->qz
+          imu.accel_unscaled.z
          );
   counter++;
 }

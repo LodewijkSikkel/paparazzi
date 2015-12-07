@@ -58,6 +58,8 @@ struct LlaCoor_i lla_pos;
 
 bool_t gps_available;   ///< Is set to TRUE when a new REMOTE_GPS packet is received and parsed
 
+struct RawGpsData gps_raw;
+
 /** GPS initialization */
 void gps_impl_init(void)
 {
@@ -156,6 +158,22 @@ void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_x
   AbiSendMsgGPS(GPS_DATALINK_ID, now_ts, &gps);
 }
 #endif
+
+extern void parse_gps_datalink_raw(uint8_t numsv, int32_t pos_x, int32_t pos_y, int32_t pos_z,
+                               int32_t vel_x, int32_t vel_y, int32_t vel_z, 
+                               int32_t qi, int32_t qx, int32_t qy, int32_t qz)
+{
+  gps_raw.pos_x = pos_x;
+  gps_raw.pos_y = pos_y;
+  gps_raw.pos_z = pos_z;
+  gps_raw.vel_x = vel_x;
+  gps_raw.vel_y = vel_y;
+  gps_raw.vel_z = vel_z;
+  gps_raw.qi = qi;
+  gps_raw.qx = qx;
+  gps_raw.qy = qy;
+  gps_raw.qz = qz;
+}
 
 /** Parse the REMOTE_GPS datalink packet */
 void parse_gps_datalink(uint8_t numsv, int32_t ecef_x, int32_t ecef_y, int32_t ecef_z, int32_t lat, int32_t lon,

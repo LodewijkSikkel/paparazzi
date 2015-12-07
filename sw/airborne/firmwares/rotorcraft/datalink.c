@@ -151,6 +151,25 @@ void dl_parse_msg(void)
         DL_REMOTE_GPS_SMALL_speed_xy(dl_buffer));
       break;
 #endif
+    case DL_REMOTE_GPS_RAW :
+      // Check if the GPS is for this AC
+      if (DL_REMOTE_GPS_ac_id(dl_buffer) != AC_ID) { break; }
+
+      // Parse the raw GPS data
+      parse_gps_datalink_raw(
+        DL_REMOTE_GPS_RAW_numsv(dl_buffer),
+        DL_REMOTE_GPS_RAW_pos_x(dl_buffer),
+        DL_REMOTE_GPS_RAW_pos_y(dl_buffer),
+        DL_REMOTE_GPS_RAW_pos_z(dl_buffer),
+        DL_REMOTE_GPS_RAW_vel_x(dl_buffer),
+        DL_REMOTE_GPS_RAW_vel_y(dl_buffer),
+        DL_REMOTE_GPS_RAW_vel_z(dl_buffer),
+        DL_REMOTE_GPS_RAW_qi(dl_buffer),
+        DL_REMOTE_GPS_RAW_qx(dl_buffer),
+        DL_REMOTE_GPS_RAW_qy(dl_buffer),
+        DL_REMOTE_GPS_RAW_qz(dl_buffer));
+      break;
+
     case DL_REMOTE_GPS :
       // Check if the GPS is for this AC
       if (DL_REMOTE_GPS_ac_id(dl_buffer) != AC_ID) { break; }
