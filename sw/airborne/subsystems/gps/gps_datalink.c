@@ -161,7 +161,7 @@ void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_x
 
 extern void parse_gps_datalink_raw(uint8_t numsv, int32_t pos_x, int32_t pos_y, int32_t pos_z,
                                int32_t vel_x, int32_t vel_y, int32_t vel_z, 
-                               int32_t qi, int32_t qx, int32_t qy, int32_t qz)
+                               int32_t phi, int32_t theta, int32_t psi)
 {
   gps_raw.pos_x = pos_x;
   gps_raw.pos_y = pos_y;
@@ -169,10 +169,9 @@ extern void parse_gps_datalink_raw(uint8_t numsv, int32_t pos_x, int32_t pos_y, 
   gps_raw.vel_x = vel_x;
   gps_raw.vel_y = vel_y;
   gps_raw.vel_z = vel_z;
-  gps_raw.qi = qi;
-  gps_raw.qx = qx;
-  gps_raw.qy = qy;
-  gps_raw.qz = qz;
+  gps_raw.phi = phi;
+  gps_raw.theta = theta;
+  gps_raw.psi = psi;
 }
 
 /** Parse the REMOTE_GPS datalink packet */

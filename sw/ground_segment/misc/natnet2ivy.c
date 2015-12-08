@@ -43,6 +43,7 @@
 #include "arch/linux/udp_socket.h"
 #include "math/pprz_geodetic_double.h"
 #include "math/pprz_algebra_double.h"
+#include "math/pprz_algebra_int.h"
 
 /** Debugging options */
 uint8_t verbose = 0;
@@ -495,6 +496,22 @@ gboolean timeout_transmit_callback(gpointer data) {
     orient.qz = rigidBodies[i].qz;
     double_eulers_of_quat(&orient_eulers, &orient);
 
+    // Compute the rotation matrix based on the quaternions provided by Optitrack
+    struct DoubleRMat rm;
+    double_rmat_of_quat(&rm, &orient);
+
+    // printf("%f, %f, %f\n", RMAT_ELMT(rm, 0, 0), RMAT_ELMT(rm, 0, 1), RMAT_ELMT(rm, 0, 2));
+    // printf("%f, %f, %f\n", RMAT_ELMT(rm, 1, 0), RMAT_ELMT(rm, 1, 1), RMAT_ELMT(rm, 1, 2));
+    // printf("%f, %f, %f\n\n", RMAT_ELMT(rm, 2, 0), RMAT_ELMT(rm, 2, 1), RMAT_ELMT(rm, 2, 2));
+
+    // printf("phi: %f\n", atan(RMAT_ELMT(rm, 2, 0)/RMAT_ELMT(rm, 2, 2))*180/M_PI);
+    // printf("theta: %f\n", asin(RMAT_ELMT(rm, 2, 1))*180/M_PI);
+    // printf("psi: %f\n\n", atan(-RMAT_ELMT(rm, 0, 1)/RMAT_ELMT(rm, 1, 1))*180/M_PI);
+
+    orient_eulers.phi = atan(RMAT_ELMT(rm, 2, 0)/RMAT_ELMT(rm, 2, 2));
+    orient_eulers.theta = asin(RMAT_ELMT(rm, 2, 1));
+    // orient_eulers.psi = atan(-RMAT_ELMT(rm, 0, 1)/RMAT_ELMT(rm, 1, 1));
+
     // Calculate the heading by adding the Natnet offset angle and normalizing it
     double heading = -orient_eulers.psi+90.0/57.6 - tracking_offset_angle; //the optitrack axes are 90 degrees rotated wrt ENU
     NormRadAngle(heading);
@@ -534,6 +551,24 @@ gboolean timeout_transmit_callback(gpointer data) {
         speed_xy); //uint32 ENU velocity X, Y in cm/s and heading in rad*1e2 (4 bytes)   
     }
     else {
+      struct Int32Eulers orient_eulers_i;
+      orient_eulers_i.phi = ANGLE_BFP_OF_REAL(orient_eulers.phi);
+      orient_eulers_i.theta = ANGLE_BFP_OF_REAL(orient_eulers.theta);
+      orient_eulers_i.psi = ANGLE_BFP_OF_REAL(orient_eulers.psi);
+
+      IvySendMsg("0 REMOTE_GPS_RAW %d %d %d %d %d %d %d %d %d %d %d", 
+        aircrafts[rigidBodies[i].id].ac_id, // uint8 rigid body ID (1 byte)
+        0,
+        (int)(rigidBodies[i].x*100),      //int32 local X in CM
+        (int)(rigidBodies[i].y*100),      //int32 local Y in CM
+        (int)(rigidBodies[i].z*100),      //int32 local Z in CM
+        (int)(rigidBodies[i].vel_x*100),  //int32 local X velocity in CM/s
+        (int)(rigidBodies[i].vel_y*100),  //int32 local Y velocity in CM/s
+        (int)(rigidBodies[i].vel_z*100),  //int32 lcoal Z velocity in CM/s
+        orient_eulers_i.phi,            // roll angle in BFP with #INT32_ANGLE_FRAC
+        orient_eulers_i.theta,          // pitch angle in BFP with #INT32_ANGLE_FRAC
+        orient_eulers_i.psi);           // yaw angle in BFP with #INT32_ANGLE_FRAC
+
       IvySendMsg("0 REMOTE_GPS %d %d %d %d %d %d %d %d %d %d %d %d %d %d", aircrafts[rigidBodies[i].id].ac_id,
         rigidBodies[i].nMarkers,                //uint8 Number of markers (sv_num)
         (int)(ecef_pos.x*100.0),                //int32 ECEF X in CM

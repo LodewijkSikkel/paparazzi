@@ -46,17 +46,16 @@ struct RawGpsData {
 	int32_t vel_x;
 	int32_t vel_y;
 	int32_t vel_z;
-	int32_t qi;
-	int32_t qx;
-	int32_t qy;
-	int32_t qz;
+	int32_t phi;
+	int32_t theta;
+	int32_t psi;
 };
 
 extern struct RawGpsData gps_raw;
 
 extern void parse_gps_datalink_raw(uint8_t numsv, int32_t pos_x, int32_t pos_y, int32_t pos_z,
                                int32_t vel_x, int32_t vel_y, int32_t vel_z, 
-                               int32_t qi, int32_t qx, int32_t qy, int32_t qz);
+                               int32_t phi, int32_t theta, int32_t psi);
 
 extern void parse_gps_datalink(uint8_t numsv, int32_t ecef_x, int32_t ecef_y, int32_t ecef_z,
                                int32_t lat, int32_t lon, int32_t alt, int32_t hmsl,

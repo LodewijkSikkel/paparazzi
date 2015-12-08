@@ -164,10 +164,9 @@ void dl_parse_msg(void)
         DL_REMOTE_GPS_RAW_vel_x(dl_buffer),
         DL_REMOTE_GPS_RAW_vel_y(dl_buffer),
         DL_REMOTE_GPS_RAW_vel_z(dl_buffer),
-        DL_REMOTE_GPS_RAW_qi(dl_buffer),
-        DL_REMOTE_GPS_RAW_qx(dl_buffer),
-        DL_REMOTE_GPS_RAW_qy(dl_buffer),
-        DL_REMOTE_GPS_RAW_qz(dl_buffer));
+        DL_REMOTE_GPS_RAW_phi(dl_buffer),
+        DL_REMOTE_GPS_RAW_theta(dl_buffer),
+        DL_REMOTE_GPS_RAW_psi(dl_buffer));
       break;
 
     case DL_REMOTE_GPS :

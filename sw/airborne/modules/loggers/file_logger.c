@@ -61,9 +61,7 @@ void file_logger_start(void)
 
   if (file_logger != NULL) {
     fprintf(
-      file_logger,
-      "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz\n"
-    );
+      file_logger,"counter,opti_pos_x,opti_pos_y,opti_pos_z,opti_vel_x,opti_vel_y,opti_vel_z,opti_phi,opti_theta,opti_psi,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z");
   }
 }
 
@@ -85,27 +83,7 @@ void file_logger_periodic(void)
   static uint32_t counter;
   struct Int32Quat *quat = stateGetNedToBodyQuat_i();
 
-  // fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
-  //         counter,
-  //         imu.gyro_unscaled.p,
-  //         imu.gyro_unscaled.q,
-  //         imu.gyro_unscaled.r,
-  //         imu.accel_unscaled.x,
-  //         imu.accel_unscaled.y,
-  //         imu.accel_unscaled.z,
-  //         imu.mag_unscaled.x,
-  //         imu.mag_unscaled.y,
-  //         imu.mag_unscaled.z,
-  //         stabilization_cmd[COMMAND_THRUST],
-  //         stabilization_cmd[COMMAND_ROLL],
-  //         stabilization_cmd[COMMAND_PITCH],
-  //         stabilization_cmd[COMMAND_YAW],
-  //         quat->qi,
-  //         quat->qx,
-  //         quat->qy,
-  //         quat->qz
-  //        );
-    fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+    fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
           counter,
           gps_raw.pos_x,
           gps_raw.pos_y,
@@ -113,10 +91,9 @@ void file_logger_periodic(void)
           gps_raw.vel_x,
           gps_raw.vel_y,
           gps_raw.vel_z,
-          gps_raw.qi,
-          gps_raw.qx,
-          gps_raw.qy,
-          gps_raw.qz,
+          gps_raw.phi,
+          gps_raw.theta,
+          gps_raw.psi,
           imu.accel_unscaled.x,
           imu.accel_unscaled.y,
           imu.accel_unscaled.z
