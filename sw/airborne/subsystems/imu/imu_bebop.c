@@ -28,6 +28,7 @@
 #include "subsystems/abi.h"
 #include "mcu_periph/i2c.h"
 
+#include <stdio.h>
 
 /* defaults suitable for Bebop */
 #ifndef BEBOP_MAG_I2C_DEV
@@ -119,6 +120,13 @@ void imu_bebop_event(void)
                  -imu_bebop.mpu.data_rates.rates.r);
     VECT3_ASSIGN(imu.accel_unscaled, imu_bebop.mpu.data_accel.vect.x, -imu_bebop.mpu.data_accel.vect.y,
                  -imu_bebop.mpu.data_accel.vect.z);
+
+    printf("gyro_unscaled_p: %d\n",imu.gyro_unscaled.p);
+    printf("gyro_unscaled_q: %d\n",imu.gyro_unscaled.q);
+    printf("gyro_unscaled_r: %d\n",imu.gyro_unscaled.r);
+    printf("accel_unscaled_x: %d\n",imu.accel_unscaled.x);
+    printf("accel_unscaled_y: %d\n",imu.accel_unscaled.y);
+    printf("accel_unscaled_z: %d\n",imu.accel_unscaled.z);
 
     imu_bebop.mpu.data_available = FALSE;
     imu_scale_gyro(&imu);

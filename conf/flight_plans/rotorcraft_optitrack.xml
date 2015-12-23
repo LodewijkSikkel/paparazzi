@@ -46,6 +46,7 @@
       <stay climb="nav_climb_vspeed" vmode="climb" wp="CLIMB"/>
     </block>
     <block name="Standby" strip_button="Standby" strip_icon="home.png">
+      <call fun="nav_set_heading_deg(57.6)"/>
       <stay wp="STDBY"/>
     </block>
     <block name="START" strip_button="Go" strip_icon="lookfore.png">
@@ -58,11 +59,12 @@
       <stay wp="p1"/>
     </block>
     <block name="go_p2">
-      <call fun="nav_set_heading_deg(90)"/>
+      <call fun="nav_set_heading_deg(0)"/>
       <go wp="p2"/>
       <deroute block="stay_p1"/>
     </block>
     <block name="line_p1_p2">
+      <call fun="nav_set_heading_deg(57.6)"/>
       <go from="p1" hmode="route" wp="p2"/>
       <stay until="stage_time>10" wp="p2"/>
       <go from="p2" hmode="route" wp="p1"/>

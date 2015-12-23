@@ -509,8 +509,16 @@ gboolean timeout_transmit_callback(gpointer data) {
     // printf("psi: %f\n\n", atan(-RMAT_ELMT(rm, 0, 1)/RMAT_ELMT(rm, 1, 1))*180/M_PI);
 
     orient_eulers.phi = atan(RMAT_ELMT(rm, 2, 0)/RMAT_ELMT(rm, 2, 2));
+
+    // printf("phi: %f\n",orient_eulers.phi);
+
     orient_eulers.theta = asin(RMAT_ELMT(rm, 2, 1));
+    
+    // printf("theta: %f\n",orient_eulers.theta);
+
     // orient_eulers.psi = atan(-RMAT_ELMT(rm, 0, 1)/RMAT_ELMT(rm, 1, 1));
+
+    // printf("psi: %f\n\n",orient_eulers.psi);
 
     // Calculate the heading by adding the Natnet offset angle and normalizing it
     double heading = -orient_eulers.psi+90.0/57.6 - tracking_offset_angle; //the optitrack axes are 90 degrees rotated wrt ENU

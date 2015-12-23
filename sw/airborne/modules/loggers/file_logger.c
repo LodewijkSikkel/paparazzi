@@ -83,7 +83,7 @@ void file_logger_periodic(void)
   static uint32_t counter;
   struct Int32Quat *quat = stateGetNedToBodyQuat_i();
 
-    fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+    fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
           counter,
           gps_raw.pos_x,
           gps_raw.pos_y,
@@ -96,7 +96,10 @@ void file_logger_periodic(void)
           gps_raw.psi,
           imu.accel_unscaled.x,
           imu.accel_unscaled.y,
-          imu.accel_unscaled.z
+          imu.accel_unscaled.z,
+          imu.gyro_unscaled.p,
+          imu.gyro_unscaled.q,
+          imu.gyro_unscaled.r
          );
   counter++;
 }
