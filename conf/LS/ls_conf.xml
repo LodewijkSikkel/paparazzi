@@ -22,6 +22,17 @@
    gui_color="blue"
   />
   <aircraft
+   name="BebopWindEstimation"
+   ac_id="3"
+   airframe="airframes/LS/ls_quadrotor_bebop_wind_estimation.xml"
+   radio="radios/cockpitSX.xml"
+   telemetry="telemetry/default_rotorcraft.xml"
+   flight_plan="flight_plans/rotorcraft_optitrack.xml"
+   settings="settings/rotorcraft_basic.xml"
+   settings_modules="[modules/geo_mag.xml] modules/air_data.xml"
+   gui_color="blue"
+  />
+  <aircraft
    name="LadyLisaBluegiga"
    ac_id="2"
    airframe="airframes/LS/ls_ladybird_lisa_s_bluegiga_small_gps_messages.xml"

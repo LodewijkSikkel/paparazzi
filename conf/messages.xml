@@ -196,7 +196,12 @@
     <field name="YprU3" 	type="float" 	unit="deg"/>
   </message>
 
-  <!--24 is free -->
+  <!--24 is occupied with filtered accelerometer data -->
+  <message name="FILTER_ACCEL" id="24">
+    <field name="x" type="float"/>
+    <field name="y" type="float"/>
+    <field name="z" type="float"/>
+  </message>
 
   <message name="SVINFO" id="25">
     <field name="chn" type="uint8"/>
@@ -859,7 +864,17 @@
     <field name="last_msg" type="uint8[]"/>
   </message>
 
-  <!--107 is free -->
+  <!--107 is occupied with the wind estimation filter state vector -->
+  <message name="WIND_ESTIMATION_FILTER" id="107">
+    <field name="phi" type="float" unit="rad"/>
+    <field name="theta" type="float" unit="rad"/>
+    <field name="vx" type="float" unit="m/s"/>
+    <field name="vy" type="float" unit="m/s"/>
+    <field name="vz" type="float" unit="m/s"/>
+    <field name="wx" type="float" unit="m/s"/>
+    <field name="wy" type="float" unit="m/s"/>
+  </message>
+
   <!--108 is free -->
 
   <message name="MULTIGAZE_METERS" id="109">
