@@ -873,6 +873,9 @@
     <field name="vz" type="float" unit="m/s"/>
     <field name="wx" type="float" unit="m/s"/>
     <field name="wy" type="float" unit="m/s"/>
+    <field name="gps_x" type="float" unit="m/s"/>
+    <field name="gps_y" type="float" unit="m/s"/>
+    <field name="gps_z" type="float" unit="m/s"/>
   </message>
 
   <!--108 is free -->
