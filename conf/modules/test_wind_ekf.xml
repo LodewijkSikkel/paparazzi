@@ -1,0 +1,18 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="test_wind_ekf" dir="test_bebop">
+  <doc>
+    <description>Wind estimator</description>
+  </doc>
+  <header>
+    <file name="test_wind_ekf.h"/>
+  </header>
+
+  <init fun="wind_ekf_init()"/>
+  <periodic fun="wind_ekf_periodic()"/>
+  <event fun="wind_ekf_event()"/>
+
+  <makefile>
+    <file name="test_wind_ekf.c"/>
+  </makefile>
+</module>
