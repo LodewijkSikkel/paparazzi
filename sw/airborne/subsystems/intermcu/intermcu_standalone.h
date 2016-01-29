@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 The Paparazzi Team
+ * Copyright (C) 2015 Lodewijk Sikkel <l.n.c.sikkel@tudelft.nl>
  *
  * This file is part of paparazzi.
  *
@@ -20,34 +20,16 @@
  *
  */
 
-/** @file subsystems/intermcu/intermcu.h
- *  @brief Rotorcraft Inter-MCU interface
+/** @file subsystems/intermcu/intermcu_standalone.h
+ *  @brief Inter-MCU communication protocol for standalone applications
  */
 
-#ifndef INTERMCU_ROTORCRAFT_H
-#define INTERMCU_ROTORCRAFT_H
+#ifndef INTERMCU_STANDALONE_H
+#define INTERMCU_STANDALONE_H
 
-#include "std.h"
-#include "subsystems/commands.h"
+#include "subsystems/intermcu.h"
 
-#define INTERMCU_AP   0
-#define INTERMCU_FBW  1
-#define INTERMCU_STANDALONE 2 
+void intermcu_send(void);
+void InterMcuEvent(void (*frame_handler)(void));
 
-#define INTERMCU_LOST_CNT 25  /* 50ms with a 512Hz timer TODO fixed value */
-
-enum intermcu_status {
-  INTERMCU_OK,
-  INTERMCU_LOST
-};
-
-struct intermcu_t {
-  enum intermcu_status status;
-  uint8_t time_since_last_frame;
-};
-extern struct intermcu_t inter_mcu;
-
-void intermcu_init(void);
-void intermcu_periodic(void);
-
-#endif
+#endif /* INTERMCU_STANDALONE_H */

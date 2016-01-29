@@ -53,6 +53,8 @@
 #include "subsystems/gps.h"
 #endif
 
+#include "subsystems/intermcu/intermcu_standalone"
+
 #if USE_BARO_BOARD
 #include "subsystems/sensors/baro.h"
 PRINT_CONFIG_MSG_VALUE("USE_BARO_BOARD is TRUE, reading onboard baro: ", BARO_BOARD)
@@ -168,19 +170,19 @@ STATIC_INLINE void main_init(void)
 
   stateInit();
 
-#ifndef INTER_MCU_AP
+// #ifndef INTER_MCU_AP
   actuators_init();
-#else
+// #else
   intermcu_init();
-#endif
+// #endif
 
 #if USE_MOTOR_MIXING
   motor_mixing_init();
 #endif
 
-#ifndef INTER_MCU_AP
+// #ifndef INTER_MCU_AP
   radio_control_init();
-#endif
+// #endif
 
 #if USE_BARO_BOARD
   baro_init();
@@ -214,9 +216,9 @@ STATIC_INLINE void main_init(void)
   downlink_init();
 #endif
 
-#ifdef INTER_MCU_AP
-  intermcu_init();
-#endif
+// #ifdef INTER_MCU_AP
+//   intermcu_init();
+// #endif
 
   // register the timers for the periodic functions
   main_periodic_tid = sys_time_register_timer((1. / PERIODIC_FREQUENCY), NULL);
@@ -281,11 +283,12 @@ STATIC_INLINE void main_periodic(void)
   autopilot_periodic();
   /* set actuators     */
   //actuators_set(autopilot_motors_on);
-#ifndef INTER_MCU_AP
+// #ifndef INTER_MCU_AP
   SetActuatorsFromCommands(commands, autopilot_mode);
-#else
-  intermcu_set_actuators(commands, autopilot_mode);
-#endif
+// #else
+//   intermcu_set_actuators(commands, autopilot_mode);
+// #endif
+
 
   if (autopilot_in_flight) {
     RunOnceEvery(PERIODIC_FREQUENCY, autopilot_flight_time++);
@@ -357,6 +360,10 @@ STATIC_INLINE void failsafe_check(void)
 #endif
 
   autopilot_check_in_flight(autopilot_motors_on);
+}
+
+STATIC_INLINE void handle_incoming_frame(void) // TODO: Handle incoming frame from the standalone program
+{
 }
 
 STATIC_INLINE void main_event(void)
