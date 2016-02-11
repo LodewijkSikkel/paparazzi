@@ -31,9 +31,12 @@
 #include "math/pprz_algebra_float.h"
 
 struct Sensors {
+  struct Int16Rates gyro_i;
+  struct Int16Vect3 accel_i;
+  struct Int16Vect3 gps_body_vel_i;
   struct FloatRates gyro_f; // filtered gyro measurements in rad/s in the body reference frame
   struct FloatVect3 accel_f; // filtered accelerometer measurements in m/s^2 in the body reference frame 
-  struct FloatVect3 gps_ned_vel_i; // GPS velocity measurements in cm/s in the North-East-Down Earth reference frame 
+  struct FloatVect3 gps_body_vel_f; // GPS velocity measurements in cm/s in the body reference frame 
 };
 
 struct State {
@@ -47,6 +50,8 @@ struct State {
 };
 
 extern struct Sensors sensors;
+
+extern struct State state;
 
 // Macro to clear a matrix
 static inline void matmn_clear(uint8_t m, uint8_t n, float (*mat)[n]) 
@@ -202,9 +207,9 @@ static inline void matnn_cof(float cof[][5], float mat[][5], uint8_t k)
   }
 }
 
-extern void parse_sensor_measurements(uint32_t gyro_x, uint32_t gyro_y, uint32_t gyro_z,
-                                      uint32_t accel_x, uint32_t accel_y, uint32_t accel_z,
-                                      uint32_t gps_body_vel_x, uint32_t gps_body_vel_y, uint32_t gps_body_vel_z);
+extern void parse_sensor_measurements(int32_t gyro_x, int32_t gyro_y, int32_t gyro_z,
+                                      int32_t accel_x, int32_t accel_y, int32_t accel_z,
+                                      int32_t gps_body_vel_x, int32_t gps_body_vel_y, int32_t gps_body_vel_z);
 extern void ekf_init(void);
 extern void ekf_periodic(void);
 extern void ekf_event(void); 

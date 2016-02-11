@@ -166,9 +166,9 @@ static void ekf_measurement_update(void)
    */
   residual[0] = sensors.accel_f.x - (coriolis.x + drag.x / MASS);
   residual[1] = sensors.accel_f.y - (coriolis.y + drag.y / MASS);
-  residual[2] = (sensors.gps_body_vel.x / 100.) - state_hat.vx;
-  residual[3] = (sensors.gps_body_vel.y / 100.) - state_hat.vy;
-  residual[4] = (sensors.gps_body_vel.z / 100.) - state_hat.vz;
+  residual[2] = (sensors.gps_body_vel_f.x / 100.) - state_hat.vx;
+  residual[3] = (sensors.gps_body_vel_f.y / 100.) - state_hat.vy;
+  residual[4] = (sensors.gps_body_vel_f.z / 100.) - state_hat.vz;
 
   /* Compute the residual covariance using the Jacobian matrix and
    * include the measurement noise covariance R
@@ -203,19 +203,29 @@ static void ekf_measurement_update(void)
   ESTIMATE_AVAILABLE = false; // the estimate has been used
 }
 
-void parse_sensor_measurements(uint32_t gyro_p, uint32_t gyro_q, uint32_t gyro_r,
-                               uint32_t accel_x, uint32_t accel_y, uint32_t accel_z,
-                               uint32_t gps_body_vel_x, uint32_t gps_body_vel_y, uint32_t gps_body_vel_z)
+void parse_sensor_measurements(int32_t gyro_p, int32_t gyro_q, int32_t gyro_r,
+                               int32_t accel_x, int32_t accel_y, int32_t accel_z,
+                               int32_t gps_body_vel_x, int32_t gps_body_vel_y, int32_t gps_body_vel_z)
 {
-  sensors.accel_f.x = ACCEL_FLOAT_OF_BFP(accel_x);
-  sensors.accel_f.y = ACCEL_FLOAT_OF_BFP(accel_y);
-  sensors.accel_f.z = ACCEL_FLOAT_OF_BFP(accel_z);
-  sensors.gyro_f.p = RATE_FLOAT_OF_BFP(gyro_p);
-  sensors.gyro_f.q = RATE_FLOAT_OF_BFP(gyro_q);
-  sensors.gyro_f.r = RATE_FLOAT_OF_BFP(gyro_r);
-  sensors.gps_body_vel_f.x = SPEED_FLOAT_OF_BFP(gps_body_vel_x);
-  sensors.gps_body_vel_f.y = SPEED_FLOAT_OF_BFP(gps_body_vel_y);
-  sensors.gps_body_vel_f.z = SPEED_FLOAT_OF_BFP(gps_body_vel_z);
+  sensors.gyro_i.p = (int16_t)gyro_p; // the BFP value still needs to be scaled with #INT32_RATE_FRAC
+  sensors.gyro_i.q = (int16_t)gyro_q;
+  sensors.gyro_i.r = (int16_t)gyro_r;
+  sensors.accel_i.x = (int16_t)accel_x; // the BFP value still needs to be scaled with #INT32_ACCEL_FRAC
+  sensors.accel_i.y = (int16_t)accel_y;
+  sensors.accel_i.z = (int16_t)accel_z;
+  sensors.gps_body_vel_i.x = (int16_t)gps_body_vel_x; // in cm/s
+  sensors.gps_body_vel_i.y = (int16_t)gps_body_vel_y;
+  sensors.gps_body_vel_i.z = (int16_t)gps_body_vel_z;
+
+  // sensors.gyro_f.p = RATE_FLOAT_OF_BFP(gyro_p); // -> REDO
+  // sensors.gyro_f.q = RATE_FLOAT_OF_BFP(gyro_q);
+  // sensors.gyro_f.r = RATE_FLOAT_OF_BFP(gyro_r);
+  // sensors.accel_f.x = ACCEL_FLOAT_OF_BFP(accel_x);
+  // sensors.accel_f.y = ACCEL_FLOAT_OF_BFP(accel_y);
+  // sensors.accel_f.z = ACCEL_FLOAT_OF_BFP(accel_z);
+  // sensors.gps_body_vel_f.x = SPEED_FLOAT_OF_BFP(gps_body_vel_x);
+  // sensors.gps_body_vel_f.y = SPEED_FLOAT_OF_BFP(gps_body_vel_y);
+  // sensors.gps_body_vel_f.z = SPEED_FLOAT_OF_BFP(gps_body_vel_z);
 }
 
 void ekf_init(void)

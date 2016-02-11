@@ -566,6 +566,7 @@ gboolean timeout_transmit_callback(gpointer data)
 
       // printf("Heading: %.2f\n", heading);
 
+
       IvySendMsg("0 REMOTE_GPS_SMALL %d %d %d %d %d", aircrafts[rigidBodies[i].id].ac_id, // uint8 rigid body ID (1 byte)
                  (uint8_t)rigidBodies[i].nMarkers, // uint8 Number of markers (sv_num) (1 byte)
                  pos_xyz,                          // uint32 ENU X, Y and Z in CM (4 bytes)

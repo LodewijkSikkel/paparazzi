@@ -91,10 +91,13 @@ LED_DEFINES = -DLED_RED=1 -DLED_GREEN=2
 endif
 LED_DEFINES ?= -DLED_RED=2 -DLED_GREEN=3
 
+LOGGER_PORT ?= UART3
+LOGGER_PORT_LOWER = $(shell echo $(LOGGER_PORT) | tr A-Z a-z)
 ekf.ARCHDIR = $(ARCH)
 ekf.CFLAGS  = $(COMMON_STANDALONE_CFLAGS) $(LED_DEFINES)
+ekf.CFLAGS += -DLOGGER_PORT=$(LOGGER_PORT_LOWER) -DUSE_$(LOGGER_PORT) -D$(LOGGER_PORT)_BAUD=B115200
 ekf.srcs    = $(COMMON_STANDALONE_SRCS)
-ekf.srcs   += standalone/main_ekf.c
+ekf.srcs   += standalone/main_ekf.c standalone/extended_kalman_filter/ekf.c
 
 include $(CFG_SHARED)/uart.makefile
 

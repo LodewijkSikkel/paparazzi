@@ -40,8 +40,10 @@
     </block>
     <block name="Standby" strip_button="Standby" strip_icon="home.png">
       <stay wp="STDBY"/>
+      <call fun="nav_set_heading_deg(90)"/>
     </block>
     <block name="stay_p1">
+      <call fun="nav_set_heading_deg(90)"/>
       <stay wp="p1"/>
     </block>
     <block name="go_p2">
@@ -50,6 +52,7 @@
       <deroute block="stay_p1"/>
     </block>
     <block name="line_p1_p2">
+      <call fun="nav_set_heading_deg(90)"/>
       <go from="p1" hmode="route" wp="p2"/>
       <stay wp="p2" until="stage_time>10"/>
       <go from="p2" hmode="route" wp="p1"/>

@@ -53,7 +53,7 @@
 #include "subsystems/gps.h"
 #endif
 
-#include "subsystems/intermcu/intermcu_standalone"
+#include "subsystems/intermcu/intermcu_standalone.h"
 
 #if USE_BARO_BOARD
 #include "subsystems/sensors/baro.h"
@@ -173,7 +173,7 @@ STATIC_INLINE void main_init(void)
 // #ifndef INTER_MCU_AP
   actuators_init();
 // #else
-  intermcu_init();
+  intermcu_init(); // TODO: Handle properly
 // #endif
 
 #if USE_MOTOR_MIXING
@@ -288,7 +288,10 @@ STATIC_INLINE void main_periodic(void)
 // #else
 //   intermcu_set_actuators(commands, autopilot_mode);
 // #endif
-
+  
+  // TODO: Handle properly
+  intermcu_periodic(); // check the connection 
+  intermcu_send(); // send the data frame
 
   if (autopilot_in_flight) {
     RunOnceEvery(PERIODIC_FREQUENCY, autopilot_flight_time++);
@@ -393,6 +396,8 @@ STATIC_INLINE void main_event(void)
 #if USE_GPS
   GpsEvent();
 #endif
+
+  InterMcuEvent(handle_incoming_frame);  // TODO: Handle properly
 
 #if FAILSAFE_GROUND_DETECT || KILL_ON_GROUND_DETECT
   DetectGroundEvent();

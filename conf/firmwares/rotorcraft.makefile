@@ -22,6 +22,7 @@
 #
 
 CFG_SHARED=$(PAPARAZZI_SRC)/conf/firmwares/subsystems/shared
+CFG_STANDALONE=$(PAPARAZZI_SRC)/conf/firmwares/subsystems/standalone
 CFG_ROTORCRAFT=$(PAPARAZZI_SRC)/conf/firmwares/subsystems/rotorcraft
 
 SRC_BOARD=boards/$(BOARD)
@@ -118,6 +119,8 @@ $(TARGET).srcs += $(SRC_FIRMWARE)/autopilot.c
 else
 $(TARGET).srcs += $(SRC_FIRMWARE)/main_fbw.c
 endif
+
+include $(CFG_STANDALONE)/intermcu_uart.makefile
 
 ######################################################################
 ##

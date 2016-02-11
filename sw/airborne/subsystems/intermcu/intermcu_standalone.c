@@ -28,13 +28,13 @@
 #include "pprzlink/intermcu_msg.h"
 #include "pprzlink/pprz_transport.h"
 #include "mcu_periph/uart.h"
+#include "led.h"
 
 #if INTERMCU_AP
+#include "state.h"
 #include "subsystems/imu.h"
-#endif
-
-#if INTERMCU_AP
 #include "subsystems/gps.h"
+#include "subsystems/datalink/downlink.h"
 #endif
 
 #if INTERMCU_EKF
@@ -48,7 +48,6 @@ static struct pprz_transport intermcu_transport;
 struct intermcu_t inter_mcu;
 static inline void intermcu_parse_msg(struct transport_rx *trans, void (*commands_frame_handler)(void));
 
-
 void intermcu_init(void)
 {
   pprz_transport_init(&intermcu_transport);
@@ -58,7 +57,7 @@ void intermcu_periodic(void)
 {
   /* Check for interMCU loss */
   if (inter_mcu.time_since_last_frame >= INTERMCU_LOST_CNT) {
-    inter_mcu.status = INTERMCU_LOST;
+    inter_mcu.status = INTERMCU_STATUS_LOST;
   } else {
     inter_mcu.time_since_last_frame++;
   }
@@ -66,45 +65,72 @@ void intermcu_periodic(void)
 
 void intermcu_send(void)
 {
+  RunOnceEvery(10, {
+    LED_TOGGLE(3);
+  });
+
 #if INTERMCU_AP
-  // Compute the ground speed in the North-East Down Earth reference frame
-  struct NedCoor_i gps_ned_vel_i;
-  ned_of_ecef_vect_i(&gps_ned_vel_i, &state.ned_origin_i, &gps.ecef_vel);
-
   // Compute the ground speed in the body reference frame
-  struct FloatVect3 gps_body_vel_i;
-  int32_rmat_vmult(&gps_body_vel_i, stateGetNedToBodyRMat_i(), &gps_ned_vel_i);
+  struct Int32Vect3 gps_body_vel_i;
+  int32_rmat_vmult(&gps_body_vel_i, stateGetNedToBodyRMat_i(), (struct Int32Vect3 *) &gps.ned_vel);
 
-  pprz_msg_send_IMCU_SENSOR_MEASUREMENTS(&(intermcu_transport.trans_tx), intermcu_device, INTERMCU_STANDALONE, 
+  pprz_msg_send_IMCU_SENSOR_MEASUREMENTS(&(intermcu_transport.trans_tx), intermcu_device, INTERMCU_NODE_AP, 
                                          &imu.gyro.p, &imu.gyro.q, &imu.gyro.r,
                                          &imu.accel.x, &imu.accel.y, &imu.accel.z,
                                          &gps_body_vel_i.x, &gps_body_vel_i.y, &gps_body_vel_i.z); 
 #else
-
+  pprz_msg_send_IMCU_EKF_STATE(&(intermcu_transport.trans_tx), intermcu_device, INTERMCU_NODE_STANDALONE, 
+                               &state.phi, &state.theta,
+                               &state.vx, &state.vy, &state.vz,
+                               &state.wx, &state.wy); 
 #endif
 }
+
+#if INTERMCU_AP
+static inline void send_ekf_state(float phi, float theta, float vx, float vy, float vz, float wx, float wy) 
+{
+  DOWNLINK_SEND_EKF_STATE(DefaultChannel, DefaultDevice, &phi, &theta, &vx, &vy, &vz, &wx, &wy);
+}
+#endif
 
 static inline void intermcu_parse_msg(struct transport_rx *trans, void (*commands_frame_handler)(void))
 {
   /* Parse the Inter MCU message */
   uint8_t msg_id = trans->payload[1];
   switch (msg_id) {
-#if INTERMCU_EKF
-    case DL_IMCU_SENSOR_MEASUREMENTS: {
-      LED_TOGGLE(3);
+#if INTERMCU_AP
+    case DL_IMCU_EKF_STATE: {
+      RunOnceEvery(10, {
+        LED_TOGGLE(4);
 
-      parse_sensor_measurements(DL_IMCU_SENSOR_MEASUREMENTS_gyro_p(payload), 
-                                DL_IMCU_SENSOR_MEASUREMENTS_gyro_q(payload), 
-                                DL_IMCU_SENSOR_MEASUREMENTS_gyro_r(payload),
-                                DL_IMCU_SENSOR_MEASUREMENTS_accel_x(payload),
-                                DL_IMCU_SENSOR_MEASUREMENTS_accel_y(payload),
-                                DL_IMCU_SENSOR_MEASUREMENTS_accel_z(payload),
-                                DL_IMCU_SENSOR_MEASUREMENTS_gps_body_vel_x(payload),
-                                DL_IMCU_SENSOR_MEASUREMENTS_gps_body_vel_y(payload),
-                                DL_IMCU_SENSOR_MEASUREMENTS_gps_body_vel_z(payload));
-      inter_mcu.status = INTERMCU_OK;
+        send_ekf_state(DL_IMCU_EKF_STATE_phi(trans->payload), DL_IMCU_EKF_STATE_theta(trans->payload),
+                       DL_IMCU_EKF_STATE_vx(trans->payload), DL_IMCU_EKF_STATE_vy(trans->payload), DL_IMCU_EKF_STATE_vz(trans->payload),
+                       DL_IMCU_EKF_STATE_wx(trans->payload), DL_IMCU_EKF_STATE_wy(trans->payload));
+      });
+
+      inter_mcu.status = INTERMCU_STATUS_OK;
       inter_mcu.time_since_last_frame = 0;
-      commands_frame_handler(); // handles the incoming data
+      // commands_frame_handler(); // handles the incoming data
+      break;
+    }
+#else
+    case DL_IMCU_SENSOR_MEASUREMENTS: {
+      RunOnceEvery(10, {
+        LED_TOGGLE(4);
+      });
+
+      parse_sensor_measurements(DL_IMCU_SENSOR_MEASUREMENTS_gyro_p(trans->payload), 
+                                DL_IMCU_SENSOR_MEASUREMENTS_gyro_q(trans->payload), 
+                                DL_IMCU_SENSOR_MEASUREMENTS_gyro_r(trans->payload),
+                                DL_IMCU_SENSOR_MEASUREMENTS_accel_x(trans->payload),
+                                DL_IMCU_SENSOR_MEASUREMENTS_accel_y(trans->payload),
+                                DL_IMCU_SENSOR_MEASUREMENTS_accel_z(trans->payload),
+                                DL_IMCU_SENSOR_MEASUREMENTS_gps_body_vel_x(trans->payload),
+                                DL_IMCU_SENSOR_MEASUREMENTS_gps_body_vel_y(trans->payload),
+                                DL_IMCU_SENSOR_MEASUREMENTS_gps_body_vel_z(trans->payload));
+      inter_mcu.status = INTERMCU_STATUS_OK;
+      inter_mcu.time_since_last_frame = 0;
+      // commands_frame_handler(); // handles the incoming data
       break;
     }
 #endif

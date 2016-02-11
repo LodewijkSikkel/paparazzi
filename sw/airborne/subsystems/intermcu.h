@@ -28,17 +28,18 @@
 #define INTERMCU_ROTORCRAFT_H
 
 #include "std.h"
-#include "subsystems/commands.h"
-
-#define INTERMCU_AP   0
-#define INTERMCU_FBW  1
-#define INTERMCU_STANDALONE 2 
 
 #define INTERMCU_LOST_CNT 25  /* 50ms with a 512Hz timer TODO fixed value */
 
+enum intermcu_node {
+  INTERMCU_NODE_AP,
+  INTERMCU_NODE_FBW,
+  INTERMCU_NODE_STANDALONE
+};
+
 enum intermcu_status {
-  INTERMCU_OK,
-  INTERMCU_LOST
+  INTERMCU_STATUS_OK,
+  INTERMCU_STATUS_LOST
 };
 
 struct intermcu_t {
