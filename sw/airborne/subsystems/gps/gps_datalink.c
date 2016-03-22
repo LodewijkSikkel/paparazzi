@@ -32,10 +32,9 @@
 #include "subsystems/gps.h"
 #include "subsystems/abi.h"
 
-// #include <stdio.h>
-
 struct LtpDef_i ltp_def;
-struct EnuCoor_i enu_pos, enu_speed;
+
+struct LocalGPS local_gps;
 
 bool_t gps_available;   ///< Is set to TRUE when a new REMOTE_GPS packet is received and parsed
 
@@ -59,54 +58,67 @@ void gps_impl_init(void)
 }
 
 // Parse the REMOTE_GPS_SMALL datalink packet
-void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_xyz, int16_t heading)
+void parse_gps_datalink_small(uint32_t pos_xyz, uint32_t speed_xyz, uint32_t eulers)
 {
   // Position in ENU coordinates
-  enu_pos.x = (int32_t)((pos_xyz >> 21) & 0x7FF); // bits 31-21 x position in cm
-  if (enu_pos.x & 0x400) {
-    enu_pos.x |= 0xFFFFF800;  // sign extend for twos complements
+  local_gps.ned_pos.x = (int32_t)((pos_xyz >> 21) & 0x7FF); // bits 31-21 x position in cm
+  if (local_gps.ned_pos.x & 0x400) {
+    local_gps.ned_pos.x |= 0xFFFFF800;  // sign extend for twos complements
   }
-  enu_pos.y = (int32_t)((pos_xyz >> 10) & 0x7FF); // bits 20-10 y position in cm
-  if (enu_pos.y & 0x400) {
-    enu_pos.y |= 0xFFFFF800;  // sign extend for twos complements
+  local_gps.ned_pos.y = (int32_t)((pos_xyz >> 10) & 0x7FF); // bits 20-10 y position in cm
+  if (local_gps.ned_pos.y & 0x400) {
+    local_gps.ned_pos.y |= 0xFFFFF800;  // sign extend for twos complements
   }
-  enu_pos.z = (int32_t)(pos_xyz & 0x3FF); // bits 9-0 z position in cm
+  local_gps.ned_pos.z = (int32_t)(pos_xyz & 0x3FF); // bits 9-0 z position in cm
 
   // Convert the ENU coordinates to ECEF
-  ecef_of_enu_point_i(&gps.ecef_pos, &ltp_def, &enu_pos);
+  ecef_of_ned_point_i(&gps.ecef_pos, &ltp_def, &local_gps.ned_pos);
   SetBit(gps.valid_fields, GPS_VALID_POS_ECEF_BIT);
 
   lla_of_ecef_i(&gps.lla_pos, &gps.ecef_pos);
   SetBit(gps.valid_fields, GPS_VALID_POS_LLA_BIT);
 
-  enu_speed.x = (int32_t)((speed_xyz >> 21) & 0x7FF); // bits 31-21 speed x in cm/s
-  if (enu_speed.x & 0x400) {
-    enu_speed.x |= 0xFFFFF800;  // sign extend for twos complements
+  local_gps.ned_speed.x = (int32_t)((speed_xyz >> 21) & 0x7FF); // bits 31-21 speed x in cm/s
+  if (local_gps.ned_speed.x & 0x400) {
+    local_gps.ned_speed.x |= 0xFFFFF800;  // sign extend for twos complements
   }
-  enu_speed.y = (int32_t)((speed_xyz >> 10) & 0x7FF); // bits 20-10 speed y in cm/s
-  if (enu_speed.y & 0x400) {
-    enu_speed.y |= 0xFFFFF800;  // sign extend for twos complements
+  local_gps.ned_speed.y = (int32_t)((speed_xyz >> 10) & 0x7FF); // bits 20-10 speed y in cm/s
+  if (local_gps.ned_speed.y & 0x400) {
+    local_gps.ned_speed.y |= 0xFFFFF800;  // sign extend for twos complements
   }
-  enu_speed.z = (int32_t)((speed_xyz) & 0x3FF); // bits 9-0 speed z in cm/s
-  if (enu_speed.z & 0x200) {
-    enu_speed.z |= 0xFFFFFC00;  // sign extend for twos complements
+  local_gps.ned_speed.z = (int32_t)((speed_xyz) & 0x3FF); // bits 9-0 speed z in cm/s
+  if (local_gps.ned_speed.z & 0x200) {
+    local_gps.ned_speed.z |= 0xFFFFFC00;  // sign extend for twos complements
   }
 
-  ecef_of_enu_vect_i(&gps.ecef_vel , &ltp_def , &enu_speed);
+  ecef_of_ned_vect_i(&gps.ecef_vel, &ltp_def, &local_gps.ned_speed);
   SetBit(gps.valid_fields, GPS_VALID_VEL_ECEF_BIT);
 
-  gps.ned_vel.x = enu_speed.y;
-  gps.ned_vel.y = enu_speed.x;
-  gps.ned_vel.z = -enu_speed.z;
+  gps.ned_vel.x = local_gps.ned_speed.x;
+  gps.ned_vel.y = local_gps.ned_speed.y;
+  gps.ned_vel.z = local_gps.ned_speed.z;
   SetBit(gps.valid_fields, GPS_VALID_VEL_NED_BIT);
 
-  gps.hmsl = ltp_def.hmsl + enu_pos.z * 10;
+  local_gps.eulers.phi = (int32_t)((eulers >> 21) & 0x7FF); // bits 31-21 roll angle in rad*1e2
+  if (local_gps.eulers.phi & 0x400) {
+    local_gps.eulers.phi |= 0xFFFFF800;  // sign extend for twos complements
+  }
+  local_gps.eulers.theta = (int32_t)((eulers >> 10) & 0x7FF); // bits 20-10 pitch angle in rad*1e2
+  if (local_gps.eulers.theta & 0x400) {
+    local_gps.eulers.theta |= 0xFFFFF800;  // sign extend for twos complements
+  }
+  local_gps.eulers.psi = (int32_t)((eulers) & 0x3FF); // bits 9-0 speed heading in rad*1e2
+  if (local_gps.eulers.psi & 0x200) {
+    local_gps.eulers.psi |= 0xFFFFFC00;  // sign extend for twos complements
+  }
+
+  gps.hmsl = ltp_def.hmsl + local_gps.ned_pos.z * 10;
   SetBit(gps.valid_fields, GPS_VALID_HMSL_BIT);
 
-  gps.course = ((int32_t)heading) * 1e3;
+  gps.course = ((int32_t)local_gps.eulers.psi) * 1e5;
   SetBit(gps.valid_fields, GPS_VALID_COURSE_BIT);
 
-  gps.num_sv = num_sv;
+  gps.num_sv = 0;
   gps.tow = gps_tow_from_sys_ticks(sys_time.nb_tick);
   gps.fix = GPS_FIX_3D; // set 3D fix to true
   gps_available = TRUE; // set GPS available to true
@@ -145,9 +157,9 @@ void parse_gps_datalink(uint8_t numsv, int32_t ecef_x, int32_t ecef_y, int32_t e
   gps.ecef_vel.z = ecef_zd;
   SetBit(gps.valid_fields, GPS_VALID_VEL_ECEF_BIT);
 
-  gps.ned_vel.x = enu_speed.y;
-  gps.ned_vel.y = enu_speed.x;
-  gps.ned_vel.z = -enu_speed.z;
+  gps.ned_vel.x = local_gps.ned_speed.x;
+  gps.ned_vel.y = local_gps.ned_speed.y;
+  gps.ned_vel.z = local_gps.ned_speed.z;
   SetBit(gps.valid_fields, GPS_VALID_VEL_NED_BIT);
 
   gps.course = course;

@@ -195,10 +195,9 @@ void dl_parse_msg(void)
       if (DL_REMOTE_GPS_SMALL_ac_id(dl_buffer) != AC_ID) { break; }
 
       parse_gps_datalink_small(
-        DL_REMOTE_GPS_SMALL_numsv(dl_buffer),
         DL_REMOTE_GPS_SMALL_pos_xyz(dl_buffer),
         DL_REMOTE_GPS_SMALL_speed_xyz(dl_buffer),
-        DL_REMOTE_GPS_SMALL_heading(dl_buffer));
+        DL_REMOTE_GPS_SMALL_eulers(dl_buffer));
     }
     break;
 

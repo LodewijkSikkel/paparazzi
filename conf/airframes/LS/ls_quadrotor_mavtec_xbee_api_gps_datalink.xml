@@ -17,6 +17,7 @@
         <!--define name="USE_KILL_SWITCH_FOR_MOTOR_ARMING" value="1"/-->
       </subsystem>
       <configure name="NO_LUFTBOOT" value="1"/>
+      <configure name="USE_MAGNETOMETER" value="0"/> <!-- Disable magnetometer -->
       <!-- MPU6000 is configured to output data at 2kHz, but polled at 512Hz PERIODIC_FREQUENCY -->
     </target>
 
@@ -31,7 +32,7 @@
     </subsystem>
     <subsystem name="telemetry"     type="xbee_api"/>
     <subsystem name="imu"           type="aspirin_v2.2"/>
-    <subsystem name="gps"           type="xbee_api"/>
+    <subsystem name="gps"           type="datalink"/>
     <subsystem name="stabilization" type="int_quat"/>
     <subsystem name="ahrs"          type="int_cmpl_quat">
       <define name="AHRS_GRAVITY_HEURISTIC_FACTOR" value="30"/>
@@ -98,21 +99,21 @@
 
     <define name="BODY_TO_IMU_PHI"   value="0." unit="deg"/>
     <define name="BODY_TO_IMU_THETA" value="0." unit="deg"/>
-    <define name="BODY_TO_IMU_PSI"   value="270." unit="deg"/>
+    <define name="BODY_TO_IMU_PSI"   value="180." unit="deg"/>
   </section>
 
   <section name="AHRS" prefix="AHRS_">
     <define name="H_X" value="0.3770441"/>
     <define name="H_Y" value="0.0193986"/>
     <define name="H_Z" value="0.9259921"/>
-    <define name="USE_GPS_HEADING" value="0"/>
+    <define name="USE_GPS_HEADING" value="1"/>
   </section>
 
 
  <section name="INS" prefix="INS_">
     <!-- Use GPS altitude measurments and set the R gain -->
-    <!-- define name="USE_GPS_ALT" value="1"/ -->
-    <!-- define name="VFF_R_GPS" value="0.01"/ -->
+    <define name="USE_GPS_ALT" value="1"/>
+    <define name="VFF_R_GPS" value="0.01"/>
   </section>
 
   <section name="STABILIZATION_ATTITUDE" prefix="STABILIZATION_ATTITUDE_">

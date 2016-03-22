@@ -70,7 +70,7 @@ kestrel2ivy: kestrel2ivy.o
 	@echo CC $@
 	$(Q)$(CC) $(CFLAGS) -o $@ $^ $(LIBRARYS) $(IVY_LDFLAGS)
 
-natnet2ivy: natnet2ivy.o pprz_geodetic_double.o pprz_algebra_double.o udp_socket.o
+natnet2ivy: natnet2ivy.o pprz_geodetic_double.o pprz_algebra_double.o pprz_geodetic_float.o pprz_algebra_float.o udp_socket.o
 	@echo CC $@
 	$(Q)$(CC) $(CFLAGS) -o $@ $^ $(LIBRARYS) $(GLIB_LDFLAGS) $(IVY_LDFLAGS)
 
@@ -87,6 +87,9 @@ sbs2ivy: sbs2ivy.o pprz_geodetic_double.o pprz_geodetic_float.o sbs_parser.o
 	$(Q)$(CC) $(CFLAGS) $(GTK_CFLAGS) -o $@ $^ $(LIBRARYS) $(GLIBIVY_LDFLAGS) $(GTK_LDFLAGS) -lm
 
 pprz_algebra_double.o : $(PAPARAZZI_SRC)/sw/airborne/math/pprz_algebra_double.c
+	$(Q)$(CC) $(CFLAGS) -c -O2 -Wall $(INCLUDES) $<
+
+pprz_algebra_float.o : $(PAPARAZZI_SRC)/sw/airborne/math/pprz_algebra_float.c
 	$(Q)$(CC) $(CFLAGS) -c -O2 -Wall $(INCLUDES) $<
 
 pprz_geodetic_double.o : $(PAPARAZZI_SRC)/sw/airborne/math/pprz_geodetic_double.c

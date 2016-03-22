@@ -36,7 +36,15 @@
 
 extern bool_t gps_available;
 
-extern void parse_gps_datalink_small(uint8_t num_sv, uint32_t pos_xyz, uint32_t speed_xyz, int16_t heading);
+struct LocalGPS {
+  struct NedCoor_i ned_pos;   ///< Position in cm with respect to the local NED reference frame
+  struct NedCoor_i ned_speed; ///< Speed in cm/s with respect to the local NED reference frame
+  struct Int32Eulers eulers;  ///< Orientation of the body in rad*1e2 with respect to the local ENU reference frame
+};
+
+extern struct LocalGPS local_gps;
+
+extern void parse_gps_datalink_small(uint32_t pos_xyz, uint32_t speed_xyz, uint32_t heading);
 
 extern void parse_gps_datalink(uint8_t numsv, int32_t ecef_x, int32_t ecef_y, int32_t ecef_z,
                                int32_t lat, int32_t lon, int32_t alt, int32_t hmsl,

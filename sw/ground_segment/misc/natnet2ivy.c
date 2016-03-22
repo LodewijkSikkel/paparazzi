@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 Freek van Tienen
+ *               2015 Lodewijk Sikke <l.n.c.sikkel@tudelft.nl>
  *
  * This file is part of Paparazzi.
  *
@@ -19,14 +20,28 @@
  * Boston, MA 02111-1307, USA.
  */
 
-/** \file natnet2ivy.c
-*  \brief NatNet (GPS) to ivy forwarder
-*
-*   This receives aircraft position information through the Optitrack system
-* NatNet UDP stream and forwards it to the ivy bus. An aircraft with the gps
-* subsystem "datalink" is then able to parse the GPS position and use it to
-* navigate inside the Optitrack system.
-*/
+/** 
+ * \file natnet2ivy.c
+ * \brief NatNet (GPS) to ivy bridge
+ *
+ * This receives aircraft position information through the Optitrack system
+ * NatNet UDP stream and forwards it to the ivy bus. An aircraft with the gps
+ * subsystem "datalink" is then able to parse the GPS position and use it to
+ * navigate inside the Optitrack system.
+ *
+ * The local reference frame is defined as a local right-handed coordinate
+ * frame. The x-axis coincides with the Optitrack x-axis, whereas the y-axis
+ * is in the same plane parallel to the ground. The z-axis complements the
+ * reference frame and is pointing down.
+ *
+ *   ^ x
+ *   |
+ *   |
+ * z * ----> y
+ *
+ * All computations are in floats as it makes no sense of increasing the 
+ * precision while the Optitrack tracking system outputs are also in floats.
+ */
 
 #include <glib.h>
 #include <stdio.h>
@@ -41,13 +56,15 @@
 
 #include "std.h"
 #include "arch/linux/udp_socket.h"
+#include "math/pprz_geodetic_float.h"
+#include "math/pprz_algebra_float.h" 
 #include "math/pprz_geodetic_double.h"
 #include "math/pprz_algebra_double.h"
 
 /** Debugging options */
 uint8_t verbose = 0;
-#define printf_natnet   if(verbose > 1) printf
-#define printf_debug    if(verbose > 0) printf
+#define printf_natnet   if(verbose == 2) printf
+#define printf_debug    if(verbose == 1) printf
 
 /** NatNet defaults */
 char *natnet_addr               = "255.255.255.255";
@@ -75,7 +92,7 @@ bool small_packets              = FALSE;
 /** NatNet parsing defines */
 #define MAX_PACKETSIZE    100000
 #define MAX_NAMELENGTH    256
-#define MAX_RIGIDBODIES   128
+#define MAX_rigid_bodies   128
 
 #define NAT_PING                    0
 #define NAT_PINGRESPONSE            1
@@ -92,20 +109,25 @@ bool small_packets              = FALSE;
 /** Tracked rigid bodies */
 struct RigidBody {
   int id;                           ///< Rigid body ID from the tracking system
-  float x, y, z;                    ///< Rigid body x, y and z coordinates in meters (note y and z are swapped)
-  float qx, qy, qz, qw;             ///< Rigid body qx, qy, qz and qw rotations (note qy and qz are swapped)
+  struct FloatVect3 opti_coord;     ///< Rigid body x, y and z position in meters in Optitrack coordinates in meters
+  struct FloatQuat opti_orient;     ///< Rigid body orientation in radians represented as a quaternion in the Optitrack coordinate frame
+  struct FloatVect3 local_coord;    ///< Rigid body x, y and z position in meters in the local coordinate frame
+  struct FloatQuat local_orient;    ///< Rigid body orientation in radians represented as a quaternion in the local coordinate frame
+  struct FloatVect3 tracking_coord; ///< Rigid body x, y and z position in meters in the desired tracking orientation 
+  struct FloatQuat tracking_orient; ///< Rigid body orientation in radians represented as a quaternion in the desired tracking orientation
   int nMarkers;                     ///< Number of markers inside the rigid body (both visible and not visible)
   float error;                      ///< Error of the position in cm
   int nSamples;                     ///< Number of samples since last transmit
   bool posSampled;                  ///< If the position is sampled last sampling
 
-  double vel_x, vel_y, vel_z;       ///< Sum of the (last_vel_* - current_vel_*) during nVelocitySamples
-  struct EcefCoor_d ecef_vel;       ///< Last valid ECEF velocity in meters
+  struct FloatVect3 local_vel;      ///< Sum of the (last_vel_* - current_vel_*) during nVelocitySamples
+  struct FloatVect3 tracking_vel;   ///< Velocity in meters per second in the desired tracking orientation
+  struct EcefCoor_f ecef_vel;       ///< Last valid ECEF velocity in meters
   int nVelocitySamples;             ///< Number of velocity samples gathered
   int totalVelocitySamples;         ///< Total amount of velocity samples possible
   int nVelocityTransmit;            ///< Amount of transmits since last valid velocity transmit
 };
-struct RigidBody rigidBodies[MAX_RIGIDBODIES];    ///< All rigid bodies which are tracked
+struct RigidBody rigid_bodies[MAX_rigid_bodies];    ///< All rigid bodies which are tracked
 
 /** Mapping between rigid body and aircraft */
 struct Aircraft {
@@ -113,14 +135,18 @@ struct Aircraft {
   float lastSample;
   bool connected;
 };
-struct Aircraft aircrafts[MAX_RIGIDBODIES];                  ///< Mapping from rigid body ID to aircraft ID
+struct Aircraft aircrafts[MAX_rigid_bodies];                  ///< Mapping from rigid body ID to aircraft ID
 
 /** Natnet socket connections */
 struct UdpSocket natnet_data, natnet_cmd;
 
-/** Tracking location LTP and angle offset from north */
-struct LtpDef_d tracking_ltp;       ///< The tracking system LTP definition
-double tracking_offset_angle;       ///< The offset from the tracking system to the North in degrees
+/** Rotation from Optitrack reference frame to local reference frame */
+struct FloatQuat local_ref;
+
+/** Tracking location LTP and orientation with respect to the local reference frame */
+struct LtpDef_f tracking_ltp;      ///< The tracking system LTP definition
+struct FloatQuat tracking_ref_quat;    ///< The orientation of the tracking system represented as a quaternion w.r.t. local reference frame
+struct FloatEulers tracking_ref_eulers; ///< The orientation of the tracking system represented as Euler angles w.r.t local reference frame
 
 /** Save the latency from natnet */
 float natnet_latency;
@@ -150,7 +176,7 @@ void natnet_parse(unsigned char *in)
     printf_natnet("Frame # : %d\n", frameNumber);
 
     // ========== MARKERSETS ==========
-    // Number of data sets (markersets, rigidbodies, etc)
+    // Number of data sets (markersets, rigid_bodies, etc)
     int nMarkerSets = 0; memcpy(&nMarkerSets, ptr, 4); ptr += 4;
     printf_natnet("Marker Set Count : %d\n", nMarkerSets);
 
@@ -186,88 +212,100 @@ void natnet_parse(unsigned char *in)
 
     // ========== RIGID BODIES ==========
     // Rigid bodies
-    int nRigidBodies = 0;
-    memcpy(&nRigidBodies, ptr, 4); ptr += 4;
-    printf_natnet("Rigid Body Count : %d\n", nRigidBodies);
+    int nrigid_bodies = 0;
+    memcpy(&nrigid_bodies, ptr, 4); ptr += 4;
+    printf_natnet("Rigid Body Count : %d\n", nrigid_bodies);
 
     // Check if there ie enough space for the rigid bodies
-    if (nRigidBodies > MAX_RIGIDBODIES) {
+    if (nrigid_bodies > MAX_rigid_bodies) {
       fprintf(stderr,
-              "Could not sample all the rigid bodies because the amount of rigid bodies is bigger then %d (MAX_RIGIDBODIES).\r\n",
-              MAX_RIGIDBODIES);
+              "Could not sample all the rigid bodies because the amount of rigid bodies is bigger then %d (MAX_rigid_bodies).\r\n",
+              MAX_rigid_bodies);
       exit(EXIT_FAILURE);
     }
 
-    for (j = 0; j < nRigidBodies; j++) {
-      // rigid body pos/ori
-      struct RigidBody old_rigid;
-      memcpy(&old_rigid, &rigidBodies[j], sizeof(struct RigidBody));
+    for (j = 0; j < nrigid_bodies; j++) {
+      // Store the rigid body position and orientation in the RigidBody struct
+      struct RigidBody prev_rigid_body;
+      memcpy(&prev_rigid_body, &rigid_bodies[j], sizeof(struct RigidBody));
 
-      memcpy(&rigidBodies[j].id, ptr, 4); ptr += 4;
-      memcpy(&rigidBodies[j].y, ptr, 4); ptr += 4;   //x --> Y
-      memcpy(&rigidBodies[j].z, ptr, 4); ptr += 4;   //y --> Z
-      memcpy(&rigidBodies[j].x, ptr, 4); ptr += 4;   //z --> X
-      memcpy(&rigidBodies[j].qx, ptr, 4); ptr += 4;  //qx --> QX
-      memcpy(&rigidBodies[j].qz, ptr, 4); ptr += 4;  //qy --> QZ
-      memcpy(&rigidBodies[j].qy, ptr, 4); ptr += 4;  //qz --> QY
-      memcpy(&rigidBodies[j].qw, ptr, 4); ptr += 4;  //qw --> QW
-      printf_natnet("ID (%d) : %d\n", j, rigidBodies[j].id);
-      printf_natnet("pos: [%3.2f,%3.2f,%3.2f]\n", rigidBodies[j].x, rigidBodies[j].y, rigidBodies[j].z);
-      printf_natnet("ori: [%3.2f,%3.2f,%3.2f,%3.2f]\n", rigidBodies[j].qx, rigidBodies[j].qy, rigidBodies[j].qz,
-                    rigidBodies[j].qw);
+      memcpy(&rigid_bodies[j].id, ptr, 4); ptr += 4;
+      memcpy(&rigid_bodies[j].opti_coord.x, ptr, 4); ptr += 4;  
+      memcpy(&rigid_bodies[j].opti_coord.y, ptr, 4); ptr += 4;   
+      memcpy(&rigid_bodies[j].opti_coord.z, ptr, 4); ptr += 4;   
+      memcpy(&rigid_bodies[j].opti_orient.qx, ptr, 4); ptr += 4;
+      memcpy(&rigid_bodies[j].opti_orient.qy, ptr, 4); ptr += 4;  
+      memcpy(&rigid_bodies[j].opti_orient.qz, ptr, 4); ptr += 4;
+      memcpy(&rigid_bodies[j].opti_orient.qi, ptr, 4); ptr += 4;
+      printf_natnet("ID (%d) : %d\n", j, rigid_bodies[j].id);
+      printf_natnet("pos: [%3.2f,%3.2f,%3.2f]\n", rigid_bodies[j].opti_coord.x, rigid_bodies[j].opti_coord.y, rigid_bodies[j].opti_coord.z);
+      printf_natnet("ori: [%3.2f,%3.2f,%3.2f,%3.2f]\n", rigid_bodies[j].opti_orient.qx, rigid_bodies[j].opti_orient.qy, rigid_bodies[j].opti_orient.qz,
+                    rigid_bodies[j].opti_orient.qi); 
 
-      // Differentiate the position to get the speed (TODO: crossreference with labeled markers for occlussion)
-      rigidBodies[j].totalVelocitySamples++;
-      if (old_rigid.x != rigidBodies[j].x || old_rigid.y != rigidBodies[j].y || old_rigid.z != rigidBodies[j].z
-          || old_rigid.qx != rigidBodies[j].qx || old_rigid.qy != rigidBodies[j].qy || old_rigid.qz != rigidBodies[j].qz
-          || old_rigid.qw != rigidBodies[j].qw) {
+      // Rotate the position from the Optitrack reference frame to the local reference frame
+      float_quat_vmult(&rigid_bodies[j].local_coord, &local_ref, &rigid_bodies[j].opti_coord);
 
-        if (old_rigid.posSampled) {
-          rigidBodies[j].vel_x += (rigidBodies[j].x - old_rigid.x);
-          rigidBodies[j].vel_y += (rigidBodies[j].y - old_rigid.y);
-          rigidBodies[j].vel_z += (rigidBodies[j].z - old_rigid.z);
-          rigidBodies[j].nVelocitySamples++;
+      // Define the rotation in the local reference frame
+      struct FloatQuat temp_quat;
+      float_quat_comp(&temp_quat, &rigid_bodies[j].opti_orient, &local_ref);
+      float_quat_inv_comp_norm_shortest(&rigid_bodies[j].local_orient, &local_ref, &temp_quat);
+
+      // Differentiate the position to get the speed
+      rigid_bodies[j].totalVelocitySamples++;
+      if (prev_rigid_body.local_coord.x != rigid_bodies[j].local_coord.x || // do a member-wise comparison because of potential padding bytes
+          prev_rigid_body.local_coord.y != rigid_bodies[j].local_coord.y || 
+          prev_rigid_body.local_coord.z != rigid_bodies[j].local_coord.z || 
+          prev_rigid_body.local_orient.qi != rigid_bodies[j].local_orient.qi || 
+          prev_rigid_body.local_orient.qx != rigid_bodies[j].local_orient.qx || 
+          prev_rigid_body.local_orient.qy != rigid_bodies[j].local_orient.qy || 
+          prev_rigid_body.local_orient.qz != rigid_bodies[j].local_orient.qz) {
+
+        if (prev_rigid_body.posSampled) {
+          rigid_bodies[j].local_vel.x += (rigid_bodies[j].local_coord.x - prev_rigid_body.local_coord.x);
+          rigid_bodies[j].local_vel.y += (rigid_bodies[j].local_coord.y - prev_rigid_body.local_coord.y);
+          rigid_bodies[j].local_vel.z += (rigid_bodies[j].local_coord.z - prev_rigid_body.local_coord.z);
+          rigid_bodies[j].nVelocitySamples++;
         }
 
-        rigidBodies[j].nSamples++;
-        rigidBodies[j].posSampled = TRUE;
+        rigid_bodies[j].nSamples++;
+        rigid_bodies[j].posSampled = TRUE; // to ensure the same position is not send twice
       } else {
-        rigidBodies[j].posSampled = FALSE;
+        rigid_bodies[j].posSampled = FALSE;
       }
 
       // When marker id changed, reset the velocity
-      if (old_rigid.id != rigidBodies[j].id) {
-        rigidBodies[j].vel_x = 0;
-        rigidBodies[j].vel_y = 0;
-        rigidBodies[j].vel_z = 0;
-        rigidBodies[j].nSamples = 0;
-        rigidBodies[j].nVelocitySamples = 0;
-        rigidBodies[j].totalVelocitySamples = 0;
-        rigidBodies[j].posSampled = FALSE;
+      if (prev_rigid_body.id != rigid_bodies[j].id) {
+        rigid_bodies[j].local_vel.x = 0;
+        rigid_bodies[j].local_vel.x = 0;
+        rigid_bodies[j].local_vel.x = 0;
+        rigid_bodies[j].nSamples = 0;
+        rigid_bodies[j].nVelocitySamples = 0;
+        rigid_bodies[j].totalVelocitySamples = 0;
+        rigid_bodies[j].posSampled = FALSE;
       }
 
       // Associated marker positions
-      memcpy(&rigidBodies[j].nMarkers, ptr, 4); ptr += 4;
-      printf_natnet("Marker Count: %d\n", rigidBodies[j].nMarkers);
-      int nBytes = rigidBodies[j].nMarkers * 3 * sizeof(float);
+      memcpy(&rigid_bodies[j].nMarkers, ptr, 4); ptr += 4;
+      printf_natnet("Marker Count: %d\n", rigid_bodies[j].nMarkers);
+      int nBytes = rigid_bodies[j].nMarkers * 3 * sizeof(float);
       float *markerData = (float *)malloc(nBytes);
       memcpy(markerData, ptr, nBytes);
       ptr += nBytes;
 
       if (natnet_major >= 2) {
         // Associated marker IDs
-        nBytes = rigidBodies[j].nMarkers * sizeof(int);
+        nBytes = rigid_bodies[j].nMarkers * sizeof(int);
         int *markerIDs = (int *)malloc(nBytes);
         memcpy(markerIDs, ptr, nBytes);
         ptr += nBytes;
 
         // Associated marker sizes
-        nBytes = rigidBodies[j].nMarkers * sizeof(float);
+        nBytes = rigid_bodies[j].nMarkers * sizeof(float);
         float *markerSizes = (float *)malloc(nBytes);
         memcpy(markerSizes, ptr, nBytes);
         ptr += nBytes;
 
-        for (k = 0; k < rigidBodies[j].nMarkers; k++) {
+        for (k = 0; k < rigid_bodies[j].nMarkers; k++) {
           printf_natnet("\tMarker %d: id=%d\tsize=%3.1f\tpos=[%3.2f,%3.2f,%3.2f]\n", k, markerIDs[k], markerSizes[k],
                         markerData[k * 3], markerData[k * 3 + 1], markerData[k * 3 + 2]);
         }
@@ -280,7 +318,7 @@ void natnet_parse(unsigned char *in)
         }
 
       } else {
-        for (k = 0; k < rigidBodies[j].nMarkers; k++) {
+        for (k = 0; k < rigid_bodies[j].nMarkers; k++) {
           printf_natnet("\tMarker %d: pos = [%3.2f,%3.2f,%3.2f]\n", k, markerData[k * 3], markerData[k * 3 + 1],
                         markerData[k * 3 + 2]);
         }
@@ -291,8 +329,8 @@ void natnet_parse(unsigned char *in)
 
       if (natnet_major >= 2) {
         // Mean marker error
-        memcpy(&rigidBodies[j].error, ptr, 4); ptr += 4;
-        printf_natnet("Mean marker error: %3.8f\n", rigidBodies[j].error);
+        memcpy(&rigid_bodies[j].error, ptr, 4); ptr += 4;
+        printf_natnet("Mean marker error: %3.8f\n", rigid_bodies[j].error);
       }
 
       // 2.6 and later
@@ -314,10 +352,10 @@ void natnet_parse(unsigned char *in)
         int skeletonID = 0;
         memcpy(&skeletonID, ptr, 4); ptr += 4;
         // # of rigid bodies (bones) in skeleton
-        int nRigidBodies = 0;
-        memcpy(&nRigidBodies, ptr, 4); ptr += 4;
-        printf_natnet("Rigid Body Count : %d\n", nRigidBodies);
-        for (j = 0; j < nRigidBodies; j++) {
+        int nrigid_bodies = 0;
+        memcpy(&nrigid_bodies, ptr, 4); ptr += 4;
+        printf_natnet("Rigid Body Count : %d\n", nrigid_bodies);
+        for (j = 0; j < nrigid_bodies; j++) {
           // Rigid body pos/ori
           int ID = 0; memcpy(&ID, ptr, 4); ptr += 4;
           float x = 0.0f; memcpy(&x, ptr, 4); ptr += 4;
@@ -415,191 +453,264 @@ gboolean timeout_transmit_callback(gpointer data)
 {
   int i;
 
-  // Loop trough all the available rigidbodies (TODO: optimize)
-  for (i = 0; i < MAX_RIGIDBODIES; i++) {
+  // Loop trough all the available rigid_bodies (TODO: optimize)
+  for (i = 0; i < MAX_rigid_bodies; i++) {
     // Check if ID's are correct
-    if (rigidBodies[i].id >= MAX_RIGIDBODIES) {
+    if (rigid_bodies[i].id >= MAX_rigid_bodies) {
       fprintf(stderr,
-              "Could not parse rigid body %d from NatNet, because ID is higher then or equal to %d (MAX_RIGIDBODIES-1).\r\n",
-              rigidBodies[i].id, MAX_RIGIDBODIES - 1);
+              "Could not parse rigid body %d from NatNet, because ID is higher then or equal to %d (MAX_rigid_bodies-1).\r\n",
+              rigid_bodies[i].id, MAX_rigid_bodies - 1);
       exit(EXIT_FAILURE);
     }
 
     // Check if we want to transmit (follow) this rigid
-    if (aircrafts[rigidBodies[i].id].ac_id == 0) {
+    if (aircrafts[rigid_bodies[i].id].ac_id == 0) {
       continue;
     }
 
     // When we don track anymore and timeout or start tracking
-    if (rigidBodies[i].nSamples < 1
-        && aircrafts[rigidBodies[i].id].connected
-        && (natnet_latency - aircrafts[rigidBodies[i].id].lastSample) > CONNECTION_TIMEOUT) {
-      aircrafts[rigidBodies[i].id].connected = FALSE;
+    if (rigid_bodies[i].nSamples < 1
+        && aircrafts[rigid_bodies[i].id].connected
+        && (natnet_latency - aircrafts[rigid_bodies[i].id].lastSample) > CONNECTION_TIMEOUT) {
+      aircrafts[rigid_bodies[i].id].connected = FALSE;
       fprintf(stderr, "#error Lost tracking rigid id %d, aircraft id %d.\n",
-              rigidBodies[i].id, aircrafts[rigidBodies[i].id].ac_id);
-    } else if (rigidBodies[i].nSamples > 0 && !aircrafts[rigidBodies[i].id].connected) {
+              rigid_bodies[i].id, aircrafts[rigid_bodies[i].id].ac_id);
+    } else if (rigid_bodies[i].nSamples > 0 && !aircrafts[rigid_bodies[i].id].connected) {
       fprintf(stderr, "#pragma message: Now tracking rigid id %d, aircraft id %d.\n",
-              rigidBodies[i].id, aircrafts[rigidBodies[i].id].ac_id);
+              rigid_bodies[i].id, aircrafts[rigid_bodies[i].id].ac_id);
     }
 
     // Check if we still track the rigid
-    if (rigidBodies[i].nSamples < 1) {
+    if (rigid_bodies[i].nSamples < 1) {
       continue;
     }
 
     // Update the last tracked
-    aircrafts[rigidBodies[i].id].connected = TRUE;
-    aircrafts[rigidBodies[i].id].lastSample = natnet_latency;
+    aircrafts[rigid_bodies[i].id].connected = TRUE;
+    aircrafts[rigid_bodies[i].id].lastSample = natnet_latency;
 
-    // Defines to make easy use of paparazzi math
-    struct EnuCoor_d pos, speed;
-    struct EcefCoor_d ecef_pos;
-    struct LlaCoor_d lla_pos;
-    struct DoubleQuat orient;
-    struct DoubleEulers orient_eulers;
+    /* 
+     * THESE FUNCTIONS WERE USED FOR TESTING AND SHOULD BE REMOVED ACCORDINGLY
+     */
 
-    // Add the Optitrack angle to the x and y positions
-    pos.x = cos(tracking_offset_angle) * rigidBodies[i].x - sin(tracking_offset_angle) * rigidBodies[i].y;
-    pos.y = sin(tracking_offset_angle) * rigidBodies[i].x + cos(tracking_offset_angle) * rigidBodies[i].y;
-    pos.z = rigidBodies[i].z;
+    // printf("pos: [%3.2f,%3.2f,%3.2f]\n", rigid_bodies[i].opti_coord.x, rigid_bodies[i].opti_coord.y, rigid_bodies[i].opti_coord.z);
+
+    // printf("ori: [%3.2f,%3.2f,%3.2f,%3.2f]\n", rigid_bodies[i].qx, rigid_bodies[i].qy, rigid_bodies[i].qz,
+                    // rigid_bodies[i].qw);
+
+    /* 
+     * Define the rotation matrix that rotates the Optitrack frame to the local 
+     * FRD (forward-right-down) reference frame through a conventional 3-2-1 
+     * rotation
+     */
+    // struct FloatRMat r_mat; 
+    // struct FloatEulers rotation_eulers;
+    // rotation_eulers.phi = 90. / 180. * M_PI; // 90 degree rotation around the x-axis
+    // rotation_eulers.theta = 0;
+    // rotation_eulers.psi = 0;
+    // float_rmat_of_eulers_321(&r_mat, &rotation_eulers);
+
+    // Define the position in local coordinates
+    // struct FloatVect3 local_coord;
+    // float_rmat_vmult(&local_coord, &r_mat, &rigid_bodies[i].opti_coord);
+
+    // printf("pos: [%3.2f,%3.2f,%3.2f] -> [%3.2f,%3.2f,%3.2f]\n", 
+      // rigid_bodies[i].opti_coord.x, rigid_bodies[i].opti_coord.y, rigid_bodies[i].opti_coord.z, 
+      // local_coord.x, local_coord.y, local_coord.z);
+
+    // Define the the orientation in the local coordinate frame
+    // struct FloatQuat rotation_quat;
+    
+
+    // Rotate the rigid body rotations to the local coordinate frame
+    // struct FloatEulers temp_eulers;
+    // float_eulers_of_quat(&temp_eulers, &rigid_bodies[i].opti_orient);
+    // printf("temp: [%3.2f,%3.2f,%3.2f]\n", 
+      // DegOfRad(temp_eulers.phi), DegOfRad(temp_eulers.theta), DegOfRad(temp_eulers.psi));
+
+    // struct FloatQuat temp_quat;
+    // float_quat_comp(&temp_quat, &rigid_bodies[i].opti_orient, &rotation_quat);
+    // float_quat_inv_comp(&orient, &rotation_quat, &temp_quat);
+
+    // Compute the Euler angles accordingly
+    // float_eulers_of_quat(&orient_eulers, &orient);
+
+    // printf("orient: [%3.2f,%3.2f,%3.2f,%3.2f] (%3.2f,%3.2f,%3.2f)\n", 
+      // orient.qi, orient.qx, orient.qy, orient.qz,
+      // DegOfRad(orient_eulers.phi), DegOfRad(orient_eulers.theta), DegOfRad(orient_eulers.psi));
+    /*
+     * END
+     */
+
+    // Rotote the local position to the desired orientation of the tracking system
+    float_quat_vmult(&rigid_bodies[i].tracking_coord, &tracking_ref_quat, &rigid_bodies[i].local_coord);
 
     // Convert the position to ecef and lla based on the Optitrack LTP
-    ecef_of_enu_point_d(&ecef_pos , &tracking_ltp , &pos);
-    lla_of_ecef_d(&lla_pos, &ecef_pos);
+    struct EcefCoor_f ecef_pos;
+    ecef_of_ned_point_f(&ecef_pos , &tracking_ltp , (struct NedCoor_f *)&rigid_bodies[i].tracking_coord);
+    struct LlaCoor_f lla_pos;
+    lla_of_ecef_f(&lla_pos, &ecef_pos);
 
     // Check if we have enough samples to estimate the velocity
-    rigidBodies[i].nVelocityTransmit++;
-    if (rigidBodies[i].nVelocitySamples >= min_velocity_samples) {
+    rigid_bodies[i].nVelocityTransmit++;
+    if (rigid_bodies[i].nVelocitySamples >= min_velocity_samples) {
       // Calculate the derevative of the sum to get the correct velocity     (1 / freq_transmit) * (samples / total_samples)
-      double sample_time = //((double)rigidBodies[i].nVelocitySamples / (double)rigidBodies[i].totalVelocitySamples) /
-        ((double)rigidBodies[i].nVelocityTransmit / (double)freq_transmit);
-      rigidBodies[i].vel_x = rigidBodies[i].vel_x / sample_time;
-      rigidBodies[i].vel_y = rigidBodies[i].vel_y / sample_time;
-      rigidBodies[i].vel_z = rigidBodies[i].vel_z / sample_time;
+      double sample_time = //((double)rigid_bodies[i].nVelocitySamples / (double)rigid_bodies[i].totalVelocitySamples) /
+        ((double)rigid_bodies[i].nVelocityTransmit / (double)freq_transmit);
+      rigid_bodies[i].local_vel.x = rigid_bodies[i].local_vel.x / sample_time;
+      rigid_bodies[i].local_vel.y = rigid_bodies[i].local_vel.y / sample_time;
+      rigid_bodies[i].local_vel.z = rigid_bodies[i].local_vel.z / sample_time;
 
       // Add the Optitrack angle to the x and y velocities
-      speed.x = cos(tracking_offset_angle) * rigidBodies[i].vel_x - sin(tracking_offset_angle) * rigidBodies[i].vel_y;
-      speed.y = sin(tracking_offset_angle) * rigidBodies[i].vel_x + cos(tracking_offset_angle) * rigidBodies[i].vel_y;
-      speed.z = rigidBodies[i].vel_z;
+      float_quat_vmult(&rigid_bodies[i].tracking_vel, &tracking_ref_quat, &rigid_bodies[i].local_vel);
 
-      // Conver the speed to ecef based on the Optitrack LTP
-      ecef_of_enu_vect_d(&rigidBodies[i].ecef_vel , &tracking_ltp , &speed);
+      // Convert the speed to ecef based on the Optitrack LTP
+      ecef_of_ned_vect_f(&rigid_bodies[i].ecef_vel, &tracking_ltp , (struct NedCoor_f *)&rigid_bodies[i].tracking_vel);
     }
 
-    // Copy the quaternions and convert to euler angles for the heading
-    orient.qi = rigidBodies[i].qw;
-    orient.qx = rigidBodies[i].qx;
-    orient.qy = rigidBodies[i].qy;
-    orient.qz = rigidBodies[i].qz;
-    double_eulers_of_quat(&orient_eulers, &orient);
+    // Rotate the orientation from the local to the tracking reference frame
+    struct FloatQuat temp_quat;
+    float_quat_comp(&temp_quat, &rigid_bodies[i].local_orient, &tracking_ref_quat);
+    float_quat_inv_comp_norm_shortest(&rigid_bodies[i].tracking_orient, &tracking_ref_quat, &temp_quat);
+
+    struct FloatEulers local_eulers;
+    float_eulers_of_quat(&local_eulers, &rigid_bodies[i].local_orient);
+    printf("Local Eulers: (%.2f, %.2f, %.2f)\n", local_eulers.phi, local_eulers.theta, local_eulers.psi);
 
     // Calculate the heading by adding the Natnet offset angle and normalizing it
-    double heading = -orient_eulers.psi + 90.0 / 57.6 -
-                     tracking_offset_angle; //the optitrack axes are 90 degrees rotated wrt ENU
+    float heading = 0;//-orient_eulers.psi + 90.0 / 57.6 -
+                     //(float)tracking_offset_angle; //the optitrack axes are 90 degrees rotated wrt ENU
     NormRadAngle(heading);
 
-    printf_debug("[%d -> %d]Samples: %d\t%d\t\tTiming: %3.3f latency\n", rigidBodies[i].id,
-                 aircrafts[rigidBodies[i].id].ac_id
-                 , rigidBodies[i].nSamples, rigidBodies[i].nVelocitySamples, natnet_latency);
+    printf_debug("[%d -> %d]Samples: %d\t%d\t\tTiming: %3.3f latency\n", rigid_bodies[i].id,
+                 aircrafts[rigid_bodies[i].id].ac_id
+                 , rigid_bodies[i].nSamples, rigid_bodies[i].nVelocitySamples, natnet_latency);
     printf_debug("    Heading: %f\t\tPosition: %f\t%f\t%f\t\tVelocity: %f\t%f\t%f\n", DegOfRad(heading),
-                 rigidBodies[i].x, rigidBodies[i].y, rigidBodies[i].z,
-                 rigidBodies[i].ecef_vel.x, rigidBodies[i].ecef_vel.y, rigidBodies[i].ecef_vel.z);
+                 rigid_bodies[i].tracking_coord.x, rigid_bodies[i].tracking_coord.y, rigid_bodies[i].tracking_coord.z,
+                 rigid_bodies[i].ecef_vel.x, rigid_bodies[i].ecef_vel.y, rigid_bodies[i].ecef_vel.z);
 
     // Transmit the REMOTE_GPS packet on the ivy bus (either small or big)
     if (small_packets) {
-      /* The local position is an int32 and the 11 LSBs of the (signed) x and y axis are compressed into
-       * a single integer. The z axis is considered unsigned and only the latter 10 LSBs are
+      /* The position in the local reference frame is a float and the 11 LSBs of the (signed) x and y axis are 
+       * compressed into a single integer. The z axis is considered unsigned and only the latter 10 LSBs are
        * used.
        */
 
       uint32_t pos_xyz = 0;
       // check if position within limits
-      if (fabs(pos.x * 100.) < pow(2, 10)) {
-        pos_xyz = (((uint32_t)(pos.x * 100.0)) & 0x7FF) << 21;                     // bits 31-21 x position in cm
+      if (fabs(rigid_bodies[i].tracking_coord.x * 100.) < pow(2, 10)) {
+        pos_xyz = (((uint32_t)(rigid_bodies[i].tracking_coord.x * 100.0)) & 0x7FF) << 21; // bits 31-21 x position in cm
       } else {
-        fprintf(stderr, "Warning!! X position out of maximum range of small message (±%.2fm): %.2f", pow(2, 10) / 100, pos.x);
-        pos_xyz = (((uint32_t)(pow(2, 10) * pos.x / fabs(pos.x))) & 0x7FF) << 21;  // bits 31-21 x position in cm
+        fprintf(stderr, "Warning!! X position out of maximum range of small message (±%.2fm): %.2f\n", pow(2, 10) / 100, rigid_bodies[i].tracking_coord.x);
+        pos_xyz = (((uint32_t)(pow(2, 10) * rigid_bodies[i].tracking_coord.x / fabs(rigid_bodies[i].tracking_coord.x))) & 0x7FF) << 21; // bits 31-21 x position in cm
       }
 
-      if (fabs(pos.y * 100.) < pow(2, 10)) {
-        pos_xyz |= (((uint32_t)(pos.y * 100.0)) & 0x7FF) << 10;                    // bits 20-10 y position in cm
+      if (fabs(rigid_bodies[i].tracking_coord.y * 100.) < pow(2, 10)) {
+        pos_xyz |= (((uint32_t)(rigid_bodies[i].tracking_coord.y * 100.0)) & 0x7FF) << 10; // bits 20-10 y position in cm
       } else {
-        fprintf(stderr, "Warning!! Y position out of maximum range of small message (±%.2fm): %.2f", pow(2, 10) / 100, pos.y);
-        pos_xyz |= (((uint32_t)(pow(2, 10) * pos.y / fabs(pos.y))) & 0x7FF) << 10; // bits 20-10 y position in cm
+        fprintf(stderr, "Warning!! Y position out of maximum range of small message (±%.2fm): %.2f\n", pow(2, 10) / 100, rigid_bodies[i].tracking_coord.y);
+        pos_xyz |= (((uint32_t)(pow(2, 10) * rigid_bodies[i].tracking_coord.y / fabs(rigid_bodies[i].tracking_coord.y))) & 0x7FF) << 10; // bits 20-10 y position in cm
       }
 
-      if (pos.z * 100. < pow(2, 10) && pos.z > 0.) {
-        pos_xyz |= (((uint32_t)(fabs(pos.z) * 100.0)) & 0x3FF);                          // bits 9-0 z position in cm
-      } else if (pos.z > 0.) {
-        fprintf(stderr, "Warning!! Z position out of maximum range of small message (%.2fm): %.2f", pow(2, 10) / 100, pos.z);
-        pos_xyz |= (((uint32_t)(pow(2, 10))) & 0x3FF);                             // bits 9-0 z position in cm
+      if (rigid_bodies[i].tracking_coord.z * 100. < pow(2, 9) && rigid_bodies[i].tracking_coord.z > 0.) {
+        pos_xyz |= (((uint32_t)(fabs(rigid_bodies[i].tracking_coord.z) * 100.0)) & 0x3FF); // bits 9-0 z position in cm
+      } else if (rigid_bodies[i].tracking_coord.z > 0.) {
+        fprintf(stderr, "Warning!! Z position out of maximum range of small message (%.2fm): %.2f\n", pow(2, 9) / 100, rigid_bodies[i].tracking_coord.z);
+        pos_xyz |= (((uint32_t)(pow(2, 9))) & 0x3FF);                              // bits 9-0 z position in cm
       }
-      // printf("ENU Pos: %u (%.2f, %.2f, %.2f)\n", pos_xyz, pos.x, pos.y, pos.z);
+      // printf("NED Pos: %u (%.2f, %.2f, %.2f)\n", pos_xyz, pos.x, pos.y, pos.z);
 
-      /* The speed is an int32 and the 11 LSBs of the x and y axis and 10 LSBs of z (all signed) are compressed into
+      /* The speed is a float and the 11 LSBs of the x and y axis and 10 LSBs of z (all signed) are compressed into
        * a single integer.
        */
       uint32_t speed_xyz = 0;
       // check if speed within limits
-      if (fabs(speed.x * 100) < pow(2, 10)) {
-        speed_xyz = (((uint32_t)(speed.x * 100.0)) & 0x7FF) << 21;                       // bits 31-21 speed x in cm/s
+      if (fabs(rigid_bodies[i].tracking_vel.x * 100) < pow(2, 10)) {
+        speed_xyz = (((uint32_t)(rigid_bodies[i].tracking_vel.x * 100.0)) & 0x7FF) << 21; // bits 31-21 speed x in cm/s
       } else {
-        fprintf(stderr, "Warning!! X Speed out of maximum range of small message (±%.2fm/s): %.2f", pow(2, 10) / 100, speed.x);
-        speed_xyz = (((uint32_t)(pow(2, 10) * speed.x / fabs(speed.x))) & 0x7FF) << 21;  // bits 31-21 speed x in cm/s
+        fprintf(stderr, "Warning!! X Speed out of maximum range of small message (±%.2fm/s): %.2f\n", pow(2, 10) / 100, rigid_bodies[i].tracking_vel.x);
+        speed_xyz = (((uint32_t)(pow(2, 10) * rigid_bodies[i].tracking_vel.x / fabs(rigid_bodies[i].tracking_vel.x))) & 0x7FF) << 21; // bits 31-21 speed x in cm/s
       }
 
-      if (fabs(speed.y * 100) < pow(2, 10)) {
-        speed_xyz |= (((uint32_t)(speed.y * 100.0)) & 0x7FF) << 10;                      // bits 20-10 speed y in cm/s
+      if (fabs(rigid_bodies[i].tracking_vel.y * 100) < pow(2, 10)) {
+        speed_xyz |= (((uint32_t)(rigid_bodies[i].tracking_vel.y * 100.0)) & 0x7FF) << 10; // bits 20-10 speed y in cm/s
       } else {
-        fprintf(stderr, "Warning!! Y Speed out of maximum range of small message (±%.2fm/s): %.2f", pow(2, 10) / 100, speed.y);
-        speed_xyz |= (((uint32_t)(pow(2, 10) * speed.y / fabs(speed.y))) & 0x7FF) << 10; // bits 20-10 speed y in cm/s
+        fprintf(stderr, "Warning!! Y Speed out of maximum range of small message (±%.2fm/s): %.2f\n", pow(2, 10) / 100, rigid_bodies[i].tracking_vel.y);
+        speed_xyz |= (((uint32_t)(pow(2, 10) * rigid_bodies[i].tracking_vel.y / fabs(rigid_bodies[i].tracking_vel.y))) & 0x7FF) << 10; // bits 20-10 speed y in cm/s
       }
 
-      if (fabs(speed.z * 100) < pow(2, 9)) {
-        speed_xyz |= (((uint32_t)(speed.z * 100.0)) & 0x3FF);                            // bits 9-0 speed z in cm/s
+      if (fabs(rigid_bodies[i].tracking_vel.z * 100) < pow(2, 9)) {
+        speed_xyz |= (((uint32_t)(rigid_bodies[i].tracking_vel.z * 100.0)) & 0x3FF); // bits 9-0 speed z in cm/s
       } else {
-        fprintf(stderr, "Warning!! Z Speed out of maximum range of small message (±%.2fm/s): %.2f", pow(2, 9) / 100, speed.z);
-        speed_xyz |= (((uint32_t)(pow(2, 9) * speed.z / fabs(speed.z))) & 0x3FF);       // bits 9-0 speed z in cm/s
+        fprintf(stderr, "Warning!! Z Speed out of maximum range of small message (±%.2fm/s): %.2f\n", pow(2, 9) / 100, rigid_bodies[i].tracking_vel.z);
+        speed_xyz |= (((uint32_t)(pow(2, 9) * rigid_bodies[i].tracking_vel.z / fabs(rigid_bodies[i].tracking_vel.z))) & 0x3FF);       // bits 9-0 speed z in cm/s
+      }
+      // printf("NED Vel: %u (%.2f, %.2f, %.2f)\n", rigid_bodies[i].tracking_vel.x, rigid_bodies[i].tracking_vel.y, rigid_bodies[i].tracking_vel.z);
+
+      // Transform the tracking orientation quaternion to Eulers
+      struct FloatEulers tracking_orient_eulers;
+      float_eulers_of_quat(&tracking_orient_eulers, &rigid_bodies[i].tracking_orient);
+
+      /* The Euler angles of the body with respect to the tracking reference frames are floats and the 11 LSBs of the
+       * roll and pitch angles and 10 LSBs of the heading are compressed into a single integer.
+       */
+      uint32_t eulers;
+      // check if eulers within limits
+      if (fabs(tracking_orient_eulers.phi * 100) < pow(2, 10)) {
+        eulers = (((uint32_t)(tracking_orient_eulers.phi * 100.0)) & 0x7FF) << 21; // bits 31-21 roll angle in rad
+      } else {
+        fprintf(stderr, "Warning!! X Speed out of maximum range of small message (±%.2fm/s): %.2f\n", pow(2, 10) / 100, tracking_orient_eulers.phi);
+        eulers = (((uint32_t)(pow(2, 10) * tracking_orient_eulers.phi / fabs(tracking_orient_eulers.phi))) & 0x7FF) << 21;  // bits 31-21 roll angle in rad
       }
 
-      // printf("ENU Vel: %u (%.2f, %.2f, 0.0)\n", speed_xy, speed.x, speed.y);
+      if (fabs(tracking_orient_eulers.theta * 100) < pow(2, 10)) {
+        eulers = (((uint32_t)(tracking_orient_eulers.theta * 100.0)) & 0x7FF) << 10; // bits 31-21 roll angle in rad
+      } else {
+        fprintf(stderr, "Warning!! X Speed out of maximum range of small message (±%.2fm/s): %.2f\n", pow(2, 10) / 100, tracking_orient_eulers.theta);
+        eulers = (((uint32_t)(pow(2, 10) * tracking_orient_eulers.theta / fabs(tracking_orient_eulers.theta))) & 0x7FF) << 10;  // bits 31-21 roll angle in rad
+      }
 
-      // printf("Heading: %.2f\n", heading);
+      if (fabs(tracking_orient_eulers.psi * 100) < pow(2, 9)) {
+        eulers = (((uint32_t)(tracking_orient_eulers.psi * 100.0)) & 0x3FF); // bits 31-21 roll angle in rad
+      } else {
+        fprintf(stderr, "Warning!! X Speed out of maximum range of small message (±%.2fm/s): %.2f\n", pow(2, 9) / 100, tracking_orient_eulers.psi);
+        eulers = (((uint32_t)(pow(2, 9) * tracking_orient_eulers.psi / fabs(tracking_orient_eulers.psi))) & 0x3FF);  // bits 31-21 roll angle in rad
+      }
+      printf("Eulers: %u (%.2f, %.2f, %.2f)\n", eulers, tracking_orient_eulers.phi, tracking_orient_eulers.theta, tracking_orient_eulers.psi);
 
-      IvySendMsg("0 REMOTE_GPS_SMALL %d %d %d %d %d", aircrafts[rigidBodies[i].id].ac_id, // uint8 rigid body ID (1 byte)
-                 (uint8_t)rigidBodies[i].nMarkers, // uint8 Number of markers (sv_num) (1 byte)
-                 pos_xyz,                          // uint32 ENU X, Y and Z in CM (4 bytes)
-                 speed_xyz,                        // uint32 ENU velocity X, Y, Z in cm/s (4 bytes)
-                 (int16_t)(heading * 10000));      // int6_t heading in rad*1e4 (2 bytes)
-
+      // Send a 13 byte message
+      IvySendMsg("0 REMOTE_GPS_SMALL %d %d %d %d", aircrafts[rigid_bodies[i].id].ac_id, // uint8 rigid body ID (1 byte)
+                 pos_xyz,                           // uint32 NED X, Y and Z in CM (4 bytes)
+                 speed_xyz,                         // uint32 NED velocity X, Y, Z in cm/s (4 bytes)
+                 eulers);                           // uint32 Euler angles rad*1e2 (4 bytes)
     } else {
-      IvySendMsg("0 REMOTE_GPS %d %d %d %d %d %d %d %d %d %d %d %d %d %d", aircrafts[rigidBodies[i].id].ac_id,
-                 rigidBodies[i].nMarkers,                //uint8 Number of markers (sv_num)
+      IvySendMsg("0 REMOTE_GPS %d %d %d %d %d %d %d %d %d %d %d %d %d %d", aircrafts[rigid_bodies[i].id].ac_id,
+                 rigid_bodies[i].nMarkers,                //uint8 Number of markers (sv_num)
                  (int)(ecef_pos.x * 100.0),              //int32 ECEF X in CM
                  (int)(ecef_pos.y * 100.0),              //int32 ECEF Y in CM
                  (int)(ecef_pos.z * 100.0),              //int32 ECEF Z in CM
                  (int)(lla_pos.lat * 10000000.0),        //int32 LLA latitude in rad*1e7
                  (int)(lla_pos.lon * 10000000.0),        //int32 LLA longitude in rad*1e7
-                 (int)(rigidBodies[i].z * 1000.0),       //int32 LLA altitude in mm above elipsoid
-                 (int)(rigidBodies[i].z * 1000.0),       //int32 HMSL height above mean sea level in mm
-                 (int)(rigidBodies[i].ecef_vel.x * 100.0), //int32 ECEF velocity X in m/s
-                 (int)(rigidBodies[i].ecef_vel.y * 100.0), //int32 ECEF velocity Y in m/s
-                 (int)(rigidBodies[i].ecef_vel.z * 100.0), //int32 ECEF velocity Z in m/s
+                 (int)(rigid_bodies[i].opti_coord.z * 1000.0),       //int32 LLA altitude in mm above elipsoid
+                 (int)(rigid_bodies[i].opti_coord.z * 1000.0),       //int32 HMSL height above mean sea level in mm
+                 (int)(rigid_bodies[i].ecef_vel.x * 100.0), //int32 ECEF velocity X in m/s
+                 (int)(rigid_bodies[i].ecef_vel.y * 100.0), //int32 ECEF velocity Y in m/s
+                 (int)(rigid_bodies[i].ecef_vel.z * 100.0), //int32 ECEF velocity Z in m/s
                  0,
                  (int)(heading * 10000000.0));           //int32 Course in rad*1e7
     }
 
     // Reset the velocity differentiator if we calculated the velocity
-    if (rigidBodies[i].nVelocitySamples >= min_velocity_samples) {
-      rigidBodies[i].vel_x = 0;
-      rigidBodies[i].vel_y = 0;
-      rigidBodies[i].vel_z = 0;
-      rigidBodies[i].nVelocitySamples = 0;
-      rigidBodies[i].totalVelocitySamples = 0;
-      rigidBodies[i].nVelocityTransmit = 0;
+    if (rigid_bodies[i].nVelocitySamples >= min_velocity_samples) {
+      rigid_bodies[i].local_vel.x = 0;
+      rigid_bodies[i].local_vel.y = 0;
+      rigid_bodies[i].local_vel.z = 0;
+      rigid_bodies[i].nVelocitySamples = 0;
+      rigid_bodies[i].totalVelocitySamples = 0;
+      rigid_bodies[i].nVelocityTransmit = 0;
     }
 
-    rigidBodies[i].nSamples = 0;
+    rigid_bodies[i].nSamples = 0;
   }
 
   return TRUE;
@@ -630,26 +741,27 @@ void print_help(char *filename)
   static const char *usage =
     "Usage: %s [options]\n"
     " Options :\n"
-    "   -h, --help                Display this help\n"
-    "   -v, --verbose <level>     Verbosity level 0-2 (0)\n\n"
+    "   -h, --help                  Display this help\n"
+    "   -v, --verbose <level>       Verbosity level 0-2 (0)\n\n"
 
-    "   -ac <rigid_id> <ac_id>    Use rigid ID for GPS of ac_id (multiple possible)\n\n"
+    "   -ac <rigid_id> <ac_id>      Use rigid ID for GPS of ac_id (multiple possible)\n\n"
 
-    "   -multicast_addr <ip>      NatNet server multicast address (239.255.42.99)\n"
-    "   -server <ip>              NatNet server IP address (255.255.255.255)\n"
-    "   -version <id>             NatNet server version (2.5)\n"
-    "   -data_port <port>         NatNet server data socket UDP port (1510)\n"
-    "   -cmd_port <port>          NatNet server command socket UDP port (1511)\n\n"
+    "   -multicast_addr <ip>        NatNet server multicast address (239.255.42.99)\n"
+    "   -server <ip>                NatNet server IP address (255.255.255.255)\n"
+    "   -version <id>               NatNet server version (2.5)\n"
+    "   -data_port <port>           NatNet server data socket UDP port (1510)\n"
+    "   -cmd_port <port>            NatNet server command socket UDP port (1511)\n\n"
 
-    "   -ecef <x> <y> <z>         ECEF coordinates of the tracking system\n"
-    "   -lla <lat> <lon> <alt>    Latitude, longitude and altitude of the tracking system\n"
-    "   -offset_angle <degree>    Tracking system angle offset compared to the North in degrees\n\n"
+    "   -ecef <x> <y> <z>           ECEF coordinates of the tracking system\n"
+    "   -lla <lat> <lon> <alt>      Latitude, longitude and altitude of the tracking system\n"
+    "   -quat <qi> <qx> <qy> <gz>   Orientation of the tracking system w.r.t. the local reference frame\n"
+    "   -eulers <phi> <theta> <psi> Orientation of the tracking system w.r.t. the local reference frame\n\n"
 
-    "   -tf <freq>                Transmit frequency to the ivy bus in hertz (60)\n"
-    "   -vel_samples <samples>    Minimum amount of samples for the velocity differentiator (4)\n"
-    "   -small                    Send small packets instead of bigger (FALSE)\n\n"
+    "   -tf <freq>                  Transmit frequency to the ivy bus in hertz (60)\n"
+    "   -vel_samples <samples>      Minimum amount of samples for the velocity differentiator (4)\n"
+    "   -small                      Send small packets instead of bigger (FALSE)\n\n"
 
-    "   -ivy_bus <address:port>   Ivy bus address and port (127.255.255.255:2010)\n";
+    "   -ivy_bus <address:port>     Ivy bus address and port (127.255.255.255:2010)\n";
   fprintf(stderr, usage, filename);
 }
 
@@ -688,8 +800,8 @@ static void parse_options(int argc, char **argv)
       int rigid_id = atoi(argv[++i]);
       uint8_t ac_id = atoi(argv[++i]);
 
-      if (rigid_id >= MAX_RIGIDBODIES) {
-        fprintf(stderr, "Rigid body ID must be less then %d (MAX_RIGIDBODIES)\n\n", MAX_RIGIDBODIES);
+      if (rigid_id >= MAX_rigid_bodies) {
+        fprintf(stderr, "Rigid body ID must be less then %d (MAX_rigid_bodies)\n\n", MAX_rigid_bodies);
         print_help(argv[0]);
         exit(EXIT_FAILURE);
       }
@@ -734,29 +846,49 @@ static void parse_options(int argc, char **argv)
     else if (strcmp(argv[i], "-ecef") == 0) {
       check_argcount(argc, argv, i, 3);
 
-      struct EcefCoor_d tracking_ecef;
+      struct EcefCoor_f tracking_ecef;
       tracking_ecef.x  = atof(argv[++i]);
       tracking_ecef.y  = atof(argv[++i]);
       tracking_ecef.z  = atof(argv[++i]);
-      ltp_def_from_ecef_d(&tracking_ltp, &tracking_ecef);
+      ltp_def_from_ecef_f(&tracking_ltp, &tracking_ecef);
     }
     // Set the tracking system position in LLA
     else if (strcmp(argv[i], "-lla") == 0) {
       check_argcount(argc, argv, i, 3);
 
-      struct EcefCoor_d tracking_ecef;
-      struct LlaCoor_d tracking_lla;
-      tracking_lla.lat  = atof(argv[++i]);
-      tracking_lla.lon  = atof(argv[++i]);
-      tracking_lla.alt  = atof(argv[++i]);
-      ecef_of_lla_d(&tracking_ecef, &tracking_lla);
-      ltp_def_from_ecef_d(&tracking_ltp, &tracking_ecef);
-    }
-    // Set the tracking system offset angle in degrees
-    else if (strcmp(argv[i], "-offset_angle") == 0) {
-      check_argcount(argc, argv, i, 1);
+      struct EcefCoor_d tracking_ecef_d;
+      struct LlaCoor_d tracking_lla_d;
+      tracking_lla_d.lat  = atof(argv[++i]);
+      tracking_lla_d.lon  = atof(argv[++i]);
+      tracking_lla_d.alt  = atof(argv[++i]);
+      ecef_of_lla_d(&tracking_ecef_d, &tracking_lla_d);
 
-      tracking_offset_angle = atof(argv[++i]);
+      // Casting from float to double will cause a loss of precision
+      struct EcefCoor_f tracking_ecef_f;
+      tracking_ecef_f.x = (float)tracking_ecef_d.x;
+      tracking_ecef_f.y = (float)tracking_ecef_d.y;
+      tracking_ecef_f.z = (float)tracking_ecef_d.z;
+      ltp_def_from_ecef_f(&tracking_ltp, &tracking_ecef_f);
+    }
+    // Set the orientation of the tracking system as a quaternion
+    else if (strcmp(argv[i], "-quat") == 0) {
+      check_argcount(argc, argv, i, 4);
+
+      tracking_ref_quat.qi = atof(argv[++i]);
+      tracking_ref_quat.qx = atof(argv[++i]);
+      tracking_ref_quat.qy = atof(argv[++i]);
+      tracking_ref_quat.qz = atof(argv[++i]);
+    }
+    // Set the orientation of the tracking system in Euler angles
+    else if (strcmp(argv[i], "-eulers") == 0) {
+      check_argcount(argc, argv, i, 4);
+
+      tracking_ref_eulers.phi = RadOfDeg(atof(argv[++i]));
+      tracking_ref_eulers.theta = RadOfDeg(atof(argv[++i]));
+      tracking_ref_eulers.psi = RadOfDeg(atof(argv[++i]));
+
+      // Compute the orientation of the tracking system as a quaternion
+      float_quat_of_eulers(&tracking_ref_quat, &tracking_ref_eulers);
     }
 
     // Set the transmit frequency
@@ -801,18 +933,30 @@ static void parse_options(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
-  // Set the default tracking system position and angle
-  struct EcefCoor_d tracking_ecef;
+  // Set the default tracking system ECEF coordinates
+  struct EcefCoor_f tracking_ecef;
   tracking_ecef.x = 3924332;
   tracking_ecef.y = 300362;
   tracking_ecef.z = 5002197;
-  tracking_offset_angle = 33.0 / 57.6;
-  ltp_def_from_ecef_d(&tracking_ltp, &tracking_ecef);
+  ltp_def_from_ecef_f(&tracking_ltp, &tracking_ecef);
+
+  // Set the default rotation to rotate the Optitrack axis system to the local reference frame
+  struct FloatEulers local_eulers;
+  local_eulers.phi = 90. / 180. * M_PI;
+  local_eulers.theta = 0.;
+  local_eulers.psi = 0.;
+  float_quat_of_eulers(&local_ref, &local_eulers);
+
+  // Set the default rotation from the local reference frame to the NED reference frame
+  tracking_ref_eulers.phi = 0.;
+  tracking_ref_eulers.theta = 0.;
+  tracking_ref_eulers.psi = 33. / 180. * M_PI;
+  float_quat_of_eulers(&tracking_ref_quat, &tracking_ref_eulers);
 
   // Parse the options from cmdline
   parse_options(argc, argv);
   printf_debug("Tracking system Latitude: %f Longitude: %f Offset to North: %f degrees\n", DegOfRad(tracking_ltp.lla.lat),
-               DegOfRad(tracking_ltp.lla.lon), DegOfRad(tracking_offset_angle));
+               DegOfRad(tracking_ltp.lla.lon), DegOfRad(tracking_ref_eulers.psi));
 
   // Create the network connections
   printf_debug("Starting NatNet listening (multicast address: %s, data port: %d, version: %d.%d)\n",
